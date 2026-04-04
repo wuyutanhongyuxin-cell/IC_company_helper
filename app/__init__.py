@@ -174,7 +174,7 @@ def _seed_admin(app):
     if existing is None:
         # 默认密码警告
         if admin_password == 'changeme':
-            click.echo('⚠ 警告: 使用默认密码，生产环境请设置 ADMIN_PASSWORD 环境变量！')
+            click.echo('[警告] 使用默认密码，生产环境请设置 ADMIN_PASSWORD 环境变量！')
 
         admin = User(
             username=admin_username,

@@ -579,7 +579,8 @@ pybabel update -i messages.pot -d app/translations
 ### 7.4 语言切换
 
 ```python
-@babel.localeselector
+# Flask-Babel 4.x: 通过 init_app 参数注册 locale_selector
+# babel.init_app(app, locale_selector=get_locale)
 def get_locale():
     return session.get('language', 'zh')
 
@@ -658,8 +659,8 @@ def create_app(config_class=None):
     app.register_blueprint(work_order_bp)
     app.register_blueprint(report_bp)
 
-    # Babel locale 选择器
-    @babel.localeselector
+    # Babel locale 选择器 — Flask-Babel 4.x 用 init_app 参数注册
+    # babel.init_app(app, locale_selector=get_locale)
     def get_locale():
         return session.get('language', 'zh')
 
@@ -1072,7 +1073,7 @@ python-dotenv==1.0.1
 |------|----------|
 | **WeasyPrint CJK 渲染慢/乱码** | Ubuntu 装 fonts-noto-cjk + libharfbuzz-subset0; CSS 用 `url()` 非 `local()`; Windows 开发需装 GTK |
 | **SQLite 并发写锁** | WAL 模式 + busy_timeout=5000 + 2 workers (非 4) |
-| **Flask-Babel 4.x API 变化** | localeselector 装饰器模式, 注意版本兼容 |
+| **Flask-Babel 4.x API 变化** | `babel.init_app(app, locale_selector=get_locale)` 方式注册, `@babel.localeselector` 已废弃 |
 | **Recipe 版本竞态** | SQLite 写锁天然序列化, 事务内操作, UNIQUE 约束兜底 |
 | **Flask-Migrate + SQLite ALTER TABLE** | 自动 batch mode (4.0+), 但必须手动审查迁移脚本 |
 | **Windows 开发环境** | WeasyPrint 需要 GTK (MSYS2 安装); 或用 Docker |

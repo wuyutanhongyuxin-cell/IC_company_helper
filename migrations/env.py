@@ -1,6 +1,7 @@
 import logging
 from logging.config import fileConfig
 
+import sqlalchemy as sa
 from flask import current_app
 
 from alembic import context
@@ -97,14 +98,25 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=get_metadata(),
-            **conf_args
-        )
+        # SQLite 批量迁移时需临时关闭 FK 约束
+        # batch mode 执行 DROP TABLE + RENAME 时，FK 开着会导致约束冲突
+        is_sqlite = connection.dialect.name == 'sqlite'
+        if is_sqlite:
+            connection.execute(sa.text("PRAGMA foreign_keys=OFF"))
 
-        with context.begin_transaction():
-            context.run_migrations()
+        try:
+            context.configure(
+                connection=connection,
+                target_metadata=get_metadata(),
+                **conf_args
+            )
+
+            with context.begin_transaction():
+                context.run_migrations()
+        finally:
+            # 迁移成功或失败都恢复 FK 约束
+            if is_sqlite:
+                connection.execute(sa.text("PRAGMA foreign_keys=ON"))
 
 
 if context.is_offline_mode():

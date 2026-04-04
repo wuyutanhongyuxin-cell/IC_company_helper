@@ -16,8 +16,8 @@ class User(UserMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    # 512 字符: werkzeug scrypt 哈希约 166 字符，预留未来算法升级空间
-    password_hash = db.Column(db.String(512), nullable=False)
+    # 256 字符: werkzeug scrypt 哈希恒定 163 字符，预留充足空间
+    password_hash = db.Column(db.String(256), nullable=False)
     display_name = db.Column(db.String(64), nullable=False)
     role = db.Column(db.String(16), nullable=False, default='operator')
     # 注意: 此 Column 有意覆盖 UserMixin.is_active 属性

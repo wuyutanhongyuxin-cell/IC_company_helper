@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 773b9258b023
+Revision ID: 73ba7270947c
 Revises: 
-Create Date: 2026-04-04 13:20:55.852349
+Create Date: 2026-04-04 17:57:51.019007
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '773b9258b023'
+revision = '73ba7270947c'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -39,7 +39,7 @@ def upgrade():
     sa.Column('target_id', sa.Integer(), nullable=True),
     sa.Column('details', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('audit_logs', schema=None) as batch_op:
@@ -60,11 +60,16 @@ def upgrade():
     sa.Column('cut_depth', sa.Float(), nullable=False),
     sa.Column('coolant_flow', sa.Float(), nullable=False),
     sa.Column('max_chipping', sa.Float(), nullable=False),
+    sa.Column('cut_direction', sa.String(length=2), nullable=True),
+    sa.Column('z1_height', sa.Float(), nullable=True),
+    sa.Column('z2_height', sa.Float(), nullable=True),
+    sa.Column('kerf_width', sa.Float(), nullable=True),
     sa.Column('notes', sa.Text(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_by', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
+    sa.CheckConstraint("cut_direction IN ('X', 'Y')", name='ck_recipe_cut_direction'),
+    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('recipe_group_id', 'version', name='uq_recipe_group_version')
     )
@@ -74,7 +79,7 @@ def upgrade():
 
     op.create_table('work_orders',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('order_number', sa.String(length=20), nullable=False),
+    sa.Column('order_number', sa.String(length=32), nullable=False),
     sa.Column('customer', sa.String(length=128), nullable=False),
     sa.Column('wafer_spec', sa.String(length=256), nullable=False),
     sa.Column('quantity', sa.Integer(), nullable=False),
@@ -88,7 +93,7 @@ def upgrade():
     sa.Column('inspection_notes', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('completed_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['recipe_id'], ['recipes.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -103,7 +108,7 @@ def upgrade():
     sa.Column('operator_id', sa.Integer(), nullable=False),
     sa.Column('notes', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['operator_id'], ['users.id'], ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['work_order_id'], ['work_orders.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

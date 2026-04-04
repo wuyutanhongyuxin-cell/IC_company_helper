@@ -14,6 +14,8 @@ class Recipe(db.Model):
     __table_args__ = (
         db.UniqueConstraint('recipe_group_id', 'version', name='uq_recipe_group_version'),
         db.Index('ix_recipe_material_size', 'wafer_material', 'wafer_size'),
+        # cut_direction 只允许 X 或 Y（或 NULL 表示非 DISCO 设备）
+        db.CheckConstraint("cut_direction IN ('X', 'Y')", name='ck_recipe_cut_direction'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -30,6 +32,12 @@ class Recipe(db.Model):
     cut_depth = db.Column(db.Float, nullable=False)             # 切割深度(um)
     coolant_flow = db.Column(db.Float, nullable=False)          # 冷却水流量(L/min)
     max_chipping = db.Column(db.Float, nullable=False)          # 最大允许崩边(um)
+
+    # DISCO 切割机参数（nullable=True: 兼容已有配方和非 DISCO 设备）
+    cut_direction = db.Column(db.String(2), nullable=True)     # 切割方向: X/Y
+    z1_height = db.Column(db.Float, nullable=True)             # Z1 高度(um) — 切割刀接触面
+    z2_height = db.Column(db.Float, nullable=True)             # Z2 高度(um) — 切割刀抬起面
+    kerf_width = db.Column(db.Float, nullable=True)            # 切口宽度(um)
 
     notes = db.Column(db.Text, nullable=True)                   # 备注
     is_active = db.Column(db.Boolean, nullable=False, default=True)  # 最新版本=True
