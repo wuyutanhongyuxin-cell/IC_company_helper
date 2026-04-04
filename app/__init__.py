@@ -4,7 +4,7 @@ WaferCut MES — Flask Application Factory
 """
 import os
 import click
-from flask import Flask, session
+from flask import Flask, session, current_app
 
 from app.extensions import db, login_manager, babel, migrate, csrf
 
@@ -78,8 +78,9 @@ def _register_extensions(app):
 
     # Flask-Babel 4.x: locale_selector 必须在 init_app 时传入
     # 必须在 _register_blueprints 之前完成，否则表单中 lazy_gettext() 会出错
+    # 使用 current_app.config 而非闭包捕获的 app，确保多 app 场景下正确
     def get_locale():
-        return session.get('language', app.config['BABEL_DEFAULT_LOCALE'])
+        return session.get('language', current_app.config['BABEL_DEFAULT_LOCALE'])
 
     babel.init_app(app, locale_selector=get_locale)
 

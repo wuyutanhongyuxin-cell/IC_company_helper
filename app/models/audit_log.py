@@ -18,7 +18,10 @@ class AuditLog(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # ondelete=SET NULL: 删除用户后保留审计日志，用户字段置空
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
     action = db.Column(db.String(64), nullable=False)
     target_type = db.Column(db.String(64), nullable=False)
     target_id = db.Column(db.Integer, nullable=True)

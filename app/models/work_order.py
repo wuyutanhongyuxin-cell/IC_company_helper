@@ -25,8 +25,10 @@ class WorkOrder(db.Model):
     status = db.Column(db.String(32), nullable=False, default='incoming')
     previous_status = db.Column(db.String(32), nullable=True)   # 异常挂起时保存
 
-    # 操作员
-    operator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # 操作员（可后续分配，ondelete=SET NULL 保留工单数据）
+    operator_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
 
     # 检验数据
     yield_rate = db.Column(db.Float, nullable=True)             # 良率(%)
@@ -65,7 +67,10 @@ class WorkOrderStatusLog(db.Model):
     )
     from_status = db.Column(db.String(32), nullable=False)
     to_status = db.Column(db.String(32), nullable=False)
-    operator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # ondelete=RESTRICT: 不允许删除有状态变更记录的用户（审计完整性）
+    operator_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='RESTRICT'), nullable=False
+    )
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(
         db.DateTime, nullable=False,

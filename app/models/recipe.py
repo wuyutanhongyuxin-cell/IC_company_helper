@@ -36,7 +36,10 @@ class Recipe(db.Model):
 
     # 关联
     # nullable=True: 允许系统初始化时创建无作者的种子数据
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # ondelete=SET NULL: 删除用户时保留配方，作者字段置空
+    created_by = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True
+    )
     created_at = db.Column(
         db.DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc)
