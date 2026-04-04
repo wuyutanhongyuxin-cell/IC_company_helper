@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}{{ _('检验数据') }} — {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <h4 class="mb-3">
+      <i class="bi bi-clipboard-check"></i>
+      {{ _('检验数据') }}: {{ order.order_number }}
+    </h4>
+
+    {# 配方参考值 #}
+    {% if order.recipe %}
+    <div class="alert alert-info">
+      <strong>{{ _('配方参考') }}:</strong>
+      {{ _('最大允许崩边') }} {{ order.recipe.max_chipping }} um
+    </div>
+    {% endif %}
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      {{ render_field(form.yield_rate) }}
+      {{ render_field(form.max_chipping_actual) }}
+      {{ render_field(form.inspection_result) }}
+      {{ render_field(form.inspection_notes) }}
+
+      <div class="d-flex gap-2 mt-4">
+        {{ form.submit(class='btn btn-warning') }}
+        <a href="{{ url_for('work_order.detail_order', id=order.id) }}"
+           class="btn btn-outline-secondary">
+          {{ _('取消') }}
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

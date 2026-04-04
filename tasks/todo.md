@@ -1,6 +1,6 @@
 # WaferCut MES — 任务进度跟踪
 
-> 最后更新: 2026-04-04
+> 最后更新: 2026-04-05
 > GitHub: https://github.com/wuyutanhongyuxin-cell/IC_company_helper
 
 ---
@@ -14,14 +14,14 @@
 | 2 | 数据模型 | **已完成** (随 Step 1 交付) | ~215 | 2026-04-04 |
 | 3 | 认证蓝图 | **已完成** | ~766 | 2026-04-04 |
 | 4 | 参数库蓝图 | **已完成** | ~620 | 2026-04-04 |
-| 5 | 工单蓝图 + 状态机 | 未开始 | ~595 | — |
+| 5 | 工单蓝图 + 状态机 | **已完成** | ~815 | 2026-04-05 |
 | 6 | 仪表盘 | 未开始 | ~130 | — |
 | 7 | PDF 报告 | 未开始 | ~185 | — |
 | 8 | 国际化 | 未开始 | ~300 | — |
 | 9 | 部署脚本 | 未开始 | ~115 | — |
 | 10 | 集成测试与打磨 | 未开始 | — | — |
 
-**当前进度: Step 1-4 已完成并推送，下一步 Step 5 工单蓝图 + 状态机。**
+**当前进度: Step 1-5 已完成并推送，下一步 Step 6 仪表盘。**
 
 ---
 
@@ -147,60 +147,50 @@
 - [x] Operator 无法创建/编辑 (403)
 - [x] 审计日志记录创建和编辑变更详情
 
+### Step 5: 工单蓝图 + 状态机 (2026-04-05)
+
+**交付物 (10 文件, 815 行):**
+- `app/utils/state_machine.py` — 状态枚举 + 转换验证 + 恢复逻辑 (74 行)
+- `app/utils/helpers.py` — 工单号生成 WO-YYYYMMDD-XXXX (36 行)
+- `app/forms/work_order.py` — 3 个表单 WorkOrder/Inspection/Status (57 行)
+- `app/blueprints/work_order/routes.py` — 4 CRUD 路由 + N+1 修复 (163 行)
+- `app/blueprints/work_order/routes_status.py` — 状态推进/恢复/检验 (141 行)
+- `app/templates/work_order/list.html` — 列表 + 状态筛选 + 搜索 (91 行)
+- `app/templates/work_order/form.html` — 创建/编辑表单 (36 行)
+- `app/templates/work_order/detail.html` — 详情 + 操作按钮 + 时间线 (172 行)
+- `app/templates/work_order/inspection.html` — 检验数据表单 (39 行)
+
+**审查修复 (Sonnet + Codex → Opus 拍板, 10 项):**
+- CSRF 校验: change_status/resume_order 加 form.validate()
+- 检验前置: inspection → completed 必须先有 inspection_result
+- InputRequired: yield_rate/max_chipping_actual 允许 0 值
+- N+1 修复: detail_order 预加载 status_logs + operator
+- 孤立字段: 删除 WorkOrderForm.notes (无对应模型列)
+- 硬编码消除: 模板用 can_hold 变量替代状态列表
+- 时区修正: 工单号日期使用服务器本地时间
+- 解析防御: try/except 防止脏数据导致 500
+- 颜色区分: cleaning(dark) 与 filming(info) 区分
+- flash 安全: 用默认文本替代原始用户输入
+
+**验证结果:**
+- [x] 创建工单 → 工单号格式 WO-YYYYMMDD-XXXX
+- [x] 完整状态流转 incoming → filming → cutting → cleaning → inspection → completed
+- [x] 异常挂起 (filming) → 恢复到正确的下一状态 (cutting)
+- [x] 仅 incoming 可编辑，其他状态编辑被拒绝
+- [x] 状态筛选 + 工单号/客户搜索功能正常
+- [x] 状态时间线正确记录 6 次变更
+- [x] 未填检验数据时阻止完成工单
+- [x] yield_rate=0 / max_chipping_actual=0 可正常提交
+- [x] 非法状态转换被拒绝
+- [x] CSRF 校验生效
+
 ---
 
 ## 待实施步骤详细规划
 
-### Step 5: 工单蓝图 + 状态机 (~595 LOC)
+### Step 6: 仪表盘 (~130 LOC)
 
 **交付文件:**
-
-| 文件 | 内容 | 预估行数 |
-|------|------|----------|
-| `app/utils/state_machine.py` | 状态枚举 + VALID_TRANSITIONS + 转换验证 | ~50 |
-| `app/utils/helpers.py` | `generate_order_number()` + API 响应工具 | ~40 |
-| `app/forms/work_order.py` | WorkOrderForm / InspectionForm / StatusForm | ~80 |
-| `app/blueprints/work_order/routes.py` | 7 个路由 (CRUD + 状态推进/恢复 + 检验) | ~200 |
-| `app/templates/work_order/list.html` | 工单列表 + 分页 + 状态筛选 + 搜索 | ~80 |
-| `app/templates/work_order/form.html` | 创建/编辑工单表单 | ~55 |
-| `app/templates/work_order/detail.html` | 工单详情 + 状态时间线 + 操作按钮 | ~90 |
-
-**路由清单:**
-
-| 方法 | 路由 | 说明 | 权限 |
-|------|------|------|------|
-| GET | `/orders/` | 列表 + 分页/筛选/搜索 | 已登录 |
-| GET/POST | `/orders/create` | 创建工单 | 已登录 |
-| GET | `/orders/<id>` | 详情 + 状态时间线 | 已登录 |
-| GET/POST | `/orders/<id>/edit` | 编辑 (仅 incoming) | 已登录 |
-| POST | `/orders/<id>/status` | 推进状态/进入异常 | 已登录 |
-| POST | `/orders/<id>/resume` | 从异常恢复 | 已登录 |
-| GET/POST | `/orders/<id>/inspection` | 填写检验数据 | 已登录 |
-
-**状态机:**
-```
-incoming → filming → cutting → cleaning → inspection → completed
-任意状态 → exception_hold
-exception_hold → 恢复到 previous_status 的下一个状态
-```
-
-**关键逻辑:**
-- 工单号 `WO-YYYYMMDD-XXXX` 事务内生成，SQLite 写锁保证序列化
-- 仅 `incoming` 状态可编辑工单基础信息
-- 检验数据在 `inspection` 状态填写 (yield_rate, max_chipping_actual, inspection_result)
-- 异常恢复: 读 `previous_status`，在 STATUS_ORDER 中找下一个状态
-
-**验证标准:**
-- [ ] 创建工单 → 工单号格式 WO-YYYYMMDD-XXXX
-- [ ] 完整状态流转 incoming → ... → completed
-- [ ] 异常挂起 → 恢复到正确的下一状态
-- [ ] 仅 incoming 可编辑，其他状态编辑返回 400
-- [ ] 分页/筛选/搜索功能正常
-- [ ] 状态时间线正确记录每次变更
-
----
-
-### Step 6: 仪表盘 (~130 LOC)
 
 **交付文件:**
 

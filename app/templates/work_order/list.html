@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination %}
+
+{% block title %}{{ _('工单管理') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-clipboard-data"></i> {{ _('工单管理') }}</h4>
+  <a href="{{ url_for('work_order.create_order') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> {{ _('创建工单') }}
+  </a>
+</div>
+
+{# ====== 筛选 + 搜索 ====== #}
+<form method="GET" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="status" class="form-select form-select-sm" aria-label="{{ _('状态筛选') }}">
+      <option value="">{{ _('全部状态') }}</option>
+      {% for s in all_statuses %}
+      <option value="{{ s }}" {{ 'selected' if s == current_status }}>
+        {{ status_labels.get(s, s) }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="text" name="q" value="{{ current_search }}"
+           class="form-control form-control-sm" placeholder="{{ _('搜索工单号/客户') }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-search"></i> {{ _('搜索') }}
+    </button>
+    {% if current_status or current_search %}
+    <a href="{{ url_for('work_order.list_orders') }}" class="btn btn-sm btn-outline-secondary">
+      {{ _('清除') }}
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+{# ====== 工单表格 ====== #}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>{{ _('工单号') }}</th>
+        <th>{{ _('客户') }}</th>
+        <th>{{ _('晶圆规格') }}</th>
+        <th>{{ _('数量') }}</th>
+        <th>{{ _('状态') }}</th>
+        <th>{{ _('操作员') }}</th>
+        <th>{{ _('创建时间') }}</th>
+        <th>{{ _('操作') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in pagination.items %}
+      <tr>
+        <td><a href="{{ url_for('work_order.detail_order', id=order.id) }}">{{ order.order_number }}</a></td>
+        <td>{{ order.customer }}</td>
+        <td>{{ order.wafer_spec }}</td>
+        <td>{{ order.quantity }}</td>
+        <td>
+          <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
+            {{ status_labels.get(order.status, order.status) }}
+          </span>
+        </td>
+        <td>{{ order.operator.display_name if order.operator else '-' }}</td>
+        <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          <a href="{{ url_for('work_order.detail_order', id=order.id) }}"
+             class="btn btn-outline-primary btn-sm" title="{{ _('详情') }}">
+            <i class="bi bi-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center text-muted py-4">
+          {{ _('暂无工单数据') }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{{ render_pagination(pagination, 'work_order.list_orders',
+     status=current_status, q=current_search) }}
+{% endblock %}

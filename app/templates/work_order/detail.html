@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('工单详情') }} — {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10 col-lg-8">
+
+    {# ---- 标题 + 状态标签 ---- #}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4>
+        <i class="bi bi-clipboard-data"></i> {{ order.order_number }}
+        <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
+          {{ status_labels.get(order.status, order.status) }}
+        </span>
+      </h4>
+      {% if order.status == 'incoming' %}
+      <a href="{{ url_for('work_order.edit_order', id=order.id) }}"
+         class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-pencil"></i> {{ _('编辑') }}
+      </a>
+      {% endif %}
+    </div>
+
+    {# ---- 基本信息 ---- #}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle"></i> {{ _('基本信息') }}</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><th style="width:35%">{{ _('客户') }}</th><td>{{ order.customer }}</td></tr>
+          <tr><th>{{ _('晶圆规格') }}</th><td>{{ order.wafer_spec }}</td></tr>
+          <tr><th>{{ _('数量') }}</th><td>{{ order.quantity }} {{ _('片') }}</td></tr>
+          <tr>
+            <th>{{ _('切割配方') }}</th>
+            <td>
+              {% if order.recipe %}
+              <a href="{{ url_for('recipe.detail_recipe', id=order.recipe_id) }}">
+                {{ order.recipe.wafer_material }} / {{ order.recipe.wafer_size }} v{{ order.recipe.version }}
+              </a>
+              {% else %}-{% endif %}
+            </td>
+          </tr>
+          <tr><th>{{ _('操作员') }}</th><td>{{ order.operator.display_name if order.operator else '-' }}</td></tr>
+          <tr><th>{{ _('创建时间') }}</th><td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+          {% if order.completed_at %}
+          <tr><th>{{ _('完成时间') }}</th><td>{{ order.completed_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    {# ---- 检验数据（有值时显示）---- #}
+    {% if order.inspection_result %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-check2-circle"></i> {{ _('检验数据') }}</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><th style="width:35%">{{ _('良率') }}</th><td>{{ order.yield_rate }}%</td></tr>
+          <tr><th>{{ _('崩边实测') }}</th><td>{{ order.max_chipping_actual }} um</td></tr>
+          <tr>
+            <th>{{ _('检验结果') }}</th>
+            <td>
+              <span class="badge bg-{{ 'success' if order.inspection_result == 'pass' else 'danger' }}">
+                {{ _('通过') if order.inspection_result == 'pass' else _('不通过') }}
+              </span>
+            </td>
+          </tr>
+          {% if order.inspection_notes %}
+          <tr><th>{{ _('检验备注') }}</th><td>{{ order.inspection_notes }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---- 操作按钮 ---- #}
+    {% if order.status != 'completed' %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-lightning"></i> {{ _('操作') }}</div>
+      <div class="card-body d-flex flex-wrap gap-2">
+
+        {# 正常推进 #}
+        {% if next_status and order.status != 'exception_hold' %}
+        <form method="POST" action="{{ url_for('work_order.change_status', id=order.id) }}">
+          {{ status_form.hidden_tag() }}
+          <input type="hidden" name="target_status" value="{{ next_status }}">
+          <button type="submit" class="btn btn-primary"
+                  onclick="return confirm('{{ _('确认推进到 %(s)s ?', s=status_labels.get(next_status, next_status)) }}')">
+            <i class="bi bi-arrow-right"></i>
+            {{ _('推进到') }} {{ status_labels.get(next_status, next_status) }}
+          </button>
+        </form>
+        {% endif %}
+
+        {# 检验入口 #}
+        {% if order.status == 'inspection' %}
+        <a href="{{ url_for('work_order.inspection', id=order.id) }}" class="btn btn-warning">
+          <i class="bi bi-clipboard-check"></i> {{ _('填写检验数据') }}
+        </a>
+        {% endif %}
+
+        {# 异常挂起 — can_hold 由路由计算，避免硬编码状态列表 #}
+        {% if can_hold %}
+        <form method="POST" action="{{ url_for('work_order.change_status', id=order.id) }}">
+          {{ status_form.hidden_tag() }}
+          <input type="hidden" name="target_status" value="exception_hold">
+          <button type="submit" class="btn btn-outline-danger"
+                  onclick="return confirm('{{ _('确认进入异常挂起?') }}')">
+            <i class="bi bi-exclamation-triangle"></i> {{ _('异常挂起') }}
+          </button>
+        </form>
+        {% endif %}
+
+        {# 异常恢复 #}
+        {% if order.status == 'exception_hold' and resume_target %}
+        <form method="POST" action="{{ url_for('work_order.resume_order', id=order.id) }}">
+          {{ status_form.hidden_tag() }}
+          <button type="submit" class="btn btn-success"
+                  onclick="return confirm('{{ _('确认恢复到 %(s)s ?', s=status_labels.get(resume_target, resume_target)) }}')">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            {{ _('恢复到') }} {{ status_labels.get(resume_target, resume_target) }}
+          </button>
+        </form>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---- 状态时间线 ---- #}
+    {% if order.status_logs %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clock-history"></i> {{ _('状态时间线') }}</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>{{ _('时间') }}</th>
+              <th>{{ _('变更') }}</th>
+              <th>{{ _('操作员') }}</th>
+              <th>{{ _('备注') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in order.status_logs %}
+            <tr>
+              <td>{{ log.created_at.strftime('%m-%d %H:%M') }}</td>
+              <td>
+                <span class="badge bg-{{ status_colors.get(log.from_status, 'secondary') }}">
+                  {{ status_labels.get(log.from_status, log.from_status) }}
+                </span>
+                <i class="bi bi-arrow-right small"></i>
+                <span class="badge bg-{{ status_colors.get(log.to_status, 'secondary') }}">
+                  {{ status_labels.get(log.to_status, log.to_status) }}
+                </span>
+              </td>
+              <td>{{ log.operator.display_name if log.operator else '-' }}</td>
+              <td>{{ log.notes or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('work_order.list_orders') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> {{ _('返回列表') }}
+    </a>
+  </div>
+</div>
+{% endblock %}

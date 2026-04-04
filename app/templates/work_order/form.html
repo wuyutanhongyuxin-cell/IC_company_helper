@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}
+  {{ _('编辑工单') if is_edit else _('创建工单') }} — WaferCut MES
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <h4 class="mb-3">
+      {% if is_edit %}
+        <i class="bi bi-pencil"></i> {{ _('编辑工单') }}: {{ order.order_number }}
+      {% else %}
+        <i class="bi bi-plus-lg"></i> {{ _('创建工单') }}
+      {% endif %}
+    </h4>
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      {{ render_field(form.customer) }}
+      {{ render_field(form.wafer_spec) }}
+      {{ render_field(form.quantity) }}
+      {{ render_field(form.recipe_id) }}
+
+      <div class="d-flex gap-2 mt-4">
+        {{ form.submit(class='btn btn-primary') }}
+        <a href="{{ url_for('work_order.detail_order', id=order.id) if is_edit else url_for('work_order.list_orders') }}"
+           class="btn btn-outline-secondary">
+          {{ _('取消') }}
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
