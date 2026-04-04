@@ -1,3 +1,290 @@
+<p align="center">
+  <strong><a href="#简体中文">简体中文</a></strong> | <strong><a href="#english">English</a></strong>
+</p>
+
+---
+
+<a name="简体中文"></a>
+
+# WaferCut MES
+
+> 晶圆切割代工厂生产管理系统
+
+面向晶圆切割代工厂的 MES（制造执行系统），管理切割参数配方、工单生命周期、质量检验与交付报告生成。
+
+---
+
+## 功能模块
+
+| 模块 | 说明 |
+|------|------|
+| **配方管理** | 版本化切割参数库，支持材料/尺寸筛选 |
+| **工单流转** | 6 阶段线性工作流 + 异常挂起处理 |
+| **质量检验** | 良率统计、崩边测量、合格/不合格判定 |
+| **PDF 报告** | 自动生成 A4 交付报告，支持中日韩字体 |
+| **角色权限** | 管理员与操作员角色，细粒度权限控制 |
+| **多语言** | 中文（默认）、英文、日文 — Flask-Babel 全量国际化 |
+| **平板适配** | Bootstrap 5 响应式布局，针对 iPad（768-1024px）优化 |
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 后端 | Python 3.10+ / Flask 3.0 |
+| 数据库 | SQLite（WAL 模式）+ Flask-Migrate |
+| 认证 | Flask-Login + werkzeug 密码哈希 |
+| 表单 | Flask-WTF (WTForms) |
+| 国际化 | Flask-Babel 4.x（中/英/日） |
+| PDF | WeasyPrint 62.3 + Noto Sans CJK |
+| 前端 | Bootstrap 5 (CDN) |
+| 部署 | Ubuntu 24.04 / Gunicorn / Nginx / systemd |
+
+---
+
+## 项目架构
+
+```
+Flask Application Factory 模式
+├── config.py                  # 开发/生产/测试 配置
+├── wsgi.py                    # WSGI 入口
+├── app/
+│   ├── __init__.py            # create_app() 工厂函数
+│   ├── extensions.py          # 两步式扩展初始化
+│   ├── models/                # SQLAlchemy ORM（5 张表）
+│   │   ├── user.py            # 用户 + 密码哈希 + 角色控制
+│   │   ├── recipe.py          # 版本化配方（单表设计）
+│   │   ├── work_order.py      # 工单 + 状态日志
+│   │   └── audit_log.py       # 审计日志 + log_action() 辅助函数
+│   ├── blueprints/            # 5 个 Flask 蓝图
+│   │   ├── auth/              # 登录 / 登出 / 用户管理
+│   │   ├── main/              # 仪表盘 + 语言切换
+│   │   ├── recipe/            # 配方 CRUD + 版本历史
+│   │   ├── work_order/        # 工单 CRUD + 状态机
+│   │   └── report/            # PDF 生成
+│   ├── utils/                 # 装饰器、状态机、工具函数
+│   ├── templates/             # Jinja2 模板（Bootstrap 5）
+│   ├── static/                # CSS + JS
+│   └── translations/          # 国际化翻译（en, ja）
+└── migrations/                # Alembic 迁移脚本
+```
+
+---
+
+## 数据库设计
+
+### 5 张数据表
+
+| 表名 | 用途 |
+|------|------|
+| `users` | 认证、角色（admin/operator）、软禁用 |
+| `recipes` | 切割参数 + 版本控制（group_id + version） |
+| `work_orders` | 生产工单，绑定具体配方版本 |
+| `work_order_status_logs` | 不可变的状态变更历史 |
+| `audit_logs` | 完整审计日志（JSON 变更详情） |
+
+### 配方版本化策略
+
+单表设计，`recipe_group_id` 分组 + `version` 自增：
+
+```
+配方组 #1
+├── v1 (is_active=False) ─── 工单 WO-20240101-0001（不可变绑定）
+├── v2 (is_active=False) ─── 工单 WO-20240115-0003
+└── v3 (is_active=True)  ─── 当前版本，供新工单使用
+```
+
+- 工单通过 `recipes.id`（主键）绑定，**绝不**通过 `recipe_group_id`
+- 编辑时创建新版本行，旧版本永不修改
+- `UNIQUE(recipe_group_id, version)` 约束防止竞态条件
+
+### 工单状态机
+
+```
+来料 → 贴膜 → 切割 → 清洗 → 检验 → 完成
+ │      │      │      │      │
+ └──────┴──────┴──────┴──────┘
+                ↓
+           异常挂起
+                ↓
+          恢复到下一状态
+```
+
+- 6 个线性阶段 + 1 个异常状态
+- 异常挂起时保存 `previous_status`，用于恢复
+- 纯 Python dict 实现（零外部依赖）
+- 三层校验：模型层 → 路由层 → 模板层
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- Python 3.10+
+- pip
+
+### 安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/wuyutanhongyuxin-cell/IC_company_helper.git
+cd IC_company_helper
+
+# 创建虚拟环境
+python -m venv venv
+source venv/bin/activate          # Linux/Mac
+# 或: venv\Scripts\activate       # Windows
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 初始化数据库
+flask init-db
+```
+
+### 运行
+
+```bash
+# 开发模式
+flask run
+
+# 生产模式
+export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+export FLASK_CONFIG=config.ProductionConfig
+gunicorn -w 2 "wsgi:app"
+```
+
+### 默认管理员账号
+
+| 字段 | 值 |
+|------|------|
+| 用户名 | `admin` |
+| 密码 | `changeme` |
+
+> 首次登录后请立即修改密码。
+
+---
+
+## 核心设计决策
+
+### 为什么选择 SQLite？
+
+- **目标环境**：工厂车间局域网单服务器部署
+- **WAL 模式**：支持并发读 + 单写（2 个 Gunicorn worker 足够）
+- **PRAGMA 配置**：`journal_mode=WAL`、`foreign_keys=ON`、`busy_timeout=5000`
+- **备份**：cron 定时任务简单复制文件
+
+### 为什么用单表配方版本化？
+
+- ~15 个参数列 — 数据冗余成本可忽略
+- 无需 JOIN — 查询模式最简
+- 工单绑定不可变的 `recipes.id`（主键），而非 `recipe_group_id`
+- SQLite 写锁天然提供版本号生成的序列化保证
+
+### 为什么用 Flask-Babel 4.x？
+
+- `locale_selector` 在 `init_app()` 时传入（4.x 移除了装饰器 API）
+- 中文作为源语言 — 仅需翻译 en/ja
+- 表单标签用 `lazy_gettext()`（渲染时求值，非定义时）
+- 语言选择存储在 `session['language']`
+
+### 安全措施
+
+- **密码哈希**：werkzeug `generate_password_hash` / `check_password_hash`
+- **CSRF 防护**：Flask-WTF CSRFProtect 保护所有表单
+- **生产环境 SECRET_KEY**：非 DEBUG 模式下检测到默认密钥将阻止启动
+- **角色权限**：`@role_required('admin')` 装饰器控制敏感操作
+- **审计日志**：所有增删改操作记录用户 ID 和 JSON 变更详情
+
+---
+
+## 项目路线图
+
+| 阶段 | 状态 | 说明 |
+|------|------|------|
+| 1. 骨架 + 配置 | 已完成 | 应用工厂、扩展、模型、配置 |
+| 2. 数据模型 | 计划中 | 完整模型实现 + 迁移 |
+| 3. 认证蓝图 | 计划中 | 登录/登出、用户管理、密码修改 |
+| 4. 配方蓝图 | 计划中 | CRUD + 版本历史 + 筛选 |
+| 5. 工单 + 状态机 | 计划中 | CRUD + 状态流转 + 检验 |
+| 6. 仪表盘 | 计划中 | 统计卡片 + 最近工单 |
+| 7. PDF 报告 | 计划中 | WeasyPrint 交付报告（CJK） |
+| 8. 国际化 | 计划中 | 英文 + 日文翻译 |
+| 9. 部署 | 计划中 | Ubuntu + Gunicorn + Nginx + systemd |
+| 10. 测试 | 计划中 | 集成测试 + 打磨 |
+
+---
+
+## 开发指南
+
+### 文件行数限制
+
+| 类型 | 最大行数 |
+|------|----------|
+| 源代码文件 | 200 |
+| 模块（目录） | 2000 |
+| 测试文件 | 300 |
+| 配置文件 | 100 |
+
+### 编码规范
+
+- 注释使用中文（面向国内团队）
+- 所有用户可见字符串用 `_()` 或 `lazy_gettext()` 包裹
+- 单函数不超过 30 行
+- 所有外部调用（数据库、API、文件 IO）必须 `try-except`
+- 禁止硬编码密钥 — 一律通过环境变量
+
+### Flask-Migrate 工作流
+
+```bash
+flask db migrate -m "描述"   # 生成迁移脚本
+flask db upgrade             # 执行迁移
+flask db downgrade           # 回滚
+```
+
+> 执行前务必检查自动生成的迁移脚本。
+> SQLite 需要 `render_as_batch=True`（已自动配置）。
+
+---
+
+## 部署（Ubuntu 24.04）
+
+```bash
+# 系统依赖
+sudo apt install -y python3-venv fonts-noto-cjk libpango-1.0-0
+
+# 应用配置
+sudo useradd -r -s /bin/false wafercut
+sudo mkdir -p /opt/wafercut
+# ...（deploy.sh 可自动完成）
+
+# Gunicorn（2 workers 适配 SQLite）
+gunicorn -w 2 --bind unix:/run/wafercut/wafercut.sock "wsgi:app"
+
+# Nginx 反向代理 + systemd 服务
+# 详见 deploy.sh
+```
+
+---
+
+## 许可证
+
+MIT
+
+---
+
+*基于 Flask 构建，由 Python 驱动。*
+
+---
+
+<p align="center"><a href="#简体中文">回到顶部</a> | <a href="#english">Switch to English</a></p>
+
+---
+
+<a name="english"></a>
+
 # WaferCut MES
 
 > Manufacturing Execution System for Wafer Dicing Operations
@@ -268,3 +555,5 @@ MIT
 ---
 
 *Built with Flask, powered by Python.*
+
+<p align="center"><a href="#简体中文">简体中文</a> | <a href="#english">Back to top</a></p>
