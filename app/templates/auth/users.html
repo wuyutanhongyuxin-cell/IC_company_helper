@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination %}
+
+{% block title %}{{ _('用户管理') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-people"></i> {{ _('用户管理') }}</h4>
+  <a href="{{ url_for('auth.user_create') }}" class="btn btn-primary">
+    <i class="bi bi-person-plus"></i> {{ _('创建用户') }}
+  </a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>{{ _('用户名') }}</th>
+        <th>{{ _('显示名') }}</th>
+        <th>{{ _('角色') }}</th>
+        <th>{{ _('状态') }}</th>
+        <th>{{ _('创建时间') }}</th>
+        <th>{{ _('操作') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in pagination.items %}
+      <tr>
+        <td><code>{{ user.username }}</code></td>
+        <td>{{ user.display_name }}</td>
+        <td>
+          {% if user.is_admin %}
+            <span class="badge bg-danger">{{ _('管理员') }}</span>
+          {% else %}
+            <span class="badge bg-info">{{ _('操作员') }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.is_active %}
+            <span class="badge bg-success">{{ _('启用') }}</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ _('禁用') }}</span>
+          {% endif %}
+        </td>
+        <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          <a href="{{ url_for('auth.user_edit', id=user.id) }}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil"></i> {{ _('编辑') }}
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{{ render_pagination(pagination, 'auth.users') }}
+{% endblock %}

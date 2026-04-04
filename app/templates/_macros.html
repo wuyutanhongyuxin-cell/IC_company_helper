@@ -1,0 +1,60 @@
+{# ====== 表单字段渲染宏 ====== #}
+
+{% macro render_field(field, label_class='form-label', field_class='form-control') %}
+<div class="mb-3">
+  {# BooleanField 用 form-check 布局 #}
+  {% if field.type == 'BooleanField' %}
+  <div class="form-check">
+    {{ field(class='form-check-input', **kwargs) }}
+    {{ field.label(class='form-check-label') }}
+  </div>
+  {% else %}
+    {{ field.label(class=label_class) }}
+    {{ field(class=field_class ~ (' is-invalid' if field.errors else ''), **kwargs) }}
+  {% endif %}
+
+  {# 校验错误提示 #}
+  {% for error in field.errors %}
+  <div class="invalid-feedback d-block">{{ error }}</div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+
+{# ====== 分页导航宏 ====== #}
+
+{% macro render_pagination(pagination, endpoint) %}
+{% if pagination.pages > 1 %}
+<nav aria-label="pagination">
+  <ul class="pagination justify-content-center">
+    {# 上一页 #}
+    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+      <a class="page-link"
+         href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) }}">
+        &laquo;
+      </a>
+    </li>
+
+    {# 页码 #}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <li class="page-item {{ 'active' if p == pagination.page }}">
+          <a class="page-link"
+             href="{{ url_for(endpoint, page=p, **kwargs) }}">{{ p }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+      {% endif %}
+    {% endfor %}
+
+    {# 下一页 #}
+    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+      <a class="page-link"
+         href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) }}">
+        &raquo;
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+{% endmacro %}

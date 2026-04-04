@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}{{ _('登录') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow">
+      <div class="card-body p-4">
+        <h3 class="card-title text-center mb-4">
+          <i class="bi bi-cpu"></i> WaferCut MES
+        </h3>
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+          {{ render_field(form.username, placeholder=_('请输入用户名')) }}
+          {{ render_field(form.password, placeholder=_('请输入密码')) }}
+          <div class="d-grid mt-4">
+            {{ form.submit(class='btn btn-primary btn-lg') }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

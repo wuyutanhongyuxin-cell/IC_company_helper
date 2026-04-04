@@ -1,0 +1,73 @@
+/* ====== WaferCut MES — 自定义样式 ====== */
+
+/* 平板触控优化: 所有可交互元素最小 44px 触控目标 */
+.btn, .nav-link, .page-link, .dropdown-item,
+.form-control, .form-select, .form-check-input {
+  min-height: 44px;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 6px 12px;
+}
+
+.nav-link {
+  padding: 10px 16px;
+}
+
+.dropdown-item {
+  padding: 10px 20px;
+}
+
+/* 表格在平板上更易阅读 */
+.table th, .table td {
+  vertical-align: middle;
+  padding: 12px;
+}
+
+/* 卡片阴影统一 */
+.card {
+  border: none;
+  border-radius: 8px;
+}
+
+/* 登录页居中 */
+.card-title {
+  font-weight: 600;
+  color: var(--bs-primary);
+}
+
+/* Badge 样式微调 */
+.badge {
+  font-weight: 500;
+  padding: 6px 10px;
+}
+
+/* 响应式: iPad 优先 (768px-1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .container-fluid {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .table {
+    font-size: 0.95rem;
+  }
+}
+
+/* 小屏幕适配 */
+@media (max-width: 767px) {
+  .table {
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* 标题栏按钮不撑满 */
+  .d-flex .btn {
+    width: auto;
+  }
+}
