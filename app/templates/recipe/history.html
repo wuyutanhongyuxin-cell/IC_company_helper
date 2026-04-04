@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('版本历史') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-7">
+    <h4 class="mb-3">
+      <i class="bi bi-clock-history"></i>
+      {{ _('版本历史') }}: {{ recipes[0].wafer_material }} / {{ recipes[0].wafer_size }}
+    </h4>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>{{ _('版本') }}</th>
+            <th>{{ _('刀片型号') }}</th>
+            <th>{{ _('转速') }}</th>
+            <th>{{ _('进给') }}</th>
+            <th>{{ _('创建者') }}</th>
+            <th>{{ _('创建时间') }}</th>
+            <th>{{ _('状态') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recipes %}
+          <tr class="{{ 'table-active' if r.is_active }}">
+            <td>
+              <a href="{{ url_for('recipe.detail_recipe', id=r.id) }}">
+                v{{ r.version }}
+              </a>
+            </td>
+            <td>{{ r.blade_model }}</td>
+            <td>{{ r.spindle_speed }} RPM</td>
+            <td>{{ r.feed_rate }} mm/s</td>
+            <td>{{ r.creator.display_name if r.creator else '-' }}</td>
+            <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              {% if r.is_active %}
+                <span class="badge bg-success">{{ _('当前版本') }}</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ _('历史版本') }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <a href="{{ url_for('recipe.list_recipes') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i> {{ _('返回列表') }}
+    </a>
+  </div>
+</div>
+{% endblock %}

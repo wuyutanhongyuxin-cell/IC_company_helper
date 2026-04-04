@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}
+  {{ _('编辑配方') if is_edit else _('新建配方') }} — WaferCut MES
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <h4 class="mb-3">
+      {% if is_edit %}
+        <i class="bi bi-pencil"></i> {{ _('编辑配方') }}
+        <small class="text-muted">v{{ recipe.version }} → v{{ recipe.version + 1 }}</small>
+      {% else %}
+        <i class="bi bi-plus-lg"></i> {{ _('新建配方') }}
+      {% endif %}
+    </h4>
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      {# ---- 基础切割参数 ---- #}
+      <h6 class="text-muted mb-3">
+        <i class="bi bi-gear"></i> {{ _('基础参数') }}
+      </h6>
+      <div class="row">
+        <div class="col-md-6">{{ render_field(form.wafer_material) }}</div>
+        <div class="col-md-6">{{ render_field(form.wafer_size) }}</div>
+      </div>
+      {{ render_field(form.blade_model) }}
+      <div class="row">
+        <div class="col-md-6">{{ render_field(form.thickness) }}</div>
+        <div class="col-md-6">{{ render_field(form.cut_depth) }}</div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">{{ render_field(form.spindle_speed) }}</div>
+        <div class="col-md-6">{{ render_field(form.feed_rate) }}</div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">{{ render_field(form.coolant_flow) }}</div>
+        <div class="col-md-6">{{ render_field(form.max_chipping) }}</div>
+      </div>
+
+      {# ---- DISCO 切割机参数（可折叠）---- #}
+      {# 如果任意 DISCO 字段有值则默认展开 #}
+      {% set disco_has_data = form.cut_direction.data not in ('', None)
+                              or form.z1_height.data is not none
+                              or form.z2_height.data is not none
+                              or form.kerf_width.data is not none %}
+      <div class="mt-3 mb-2">
+        <a class="text-decoration-none" data-bs-toggle="collapse"
+           href="#discoParams" role="button"
+           aria-expanded="{{ 'true' if disco_has_data else 'false' }}">
+          <i class="bi bi-cpu"></i> {{ _('DISCO 切割机参数') }}
+          <small class="text-muted">({{ _('可选') }})</small>
+          <i class="bi bi-chevron-down small"></i>
+        </a>
+      </div>
+      <div class="collapse {{ 'show' if disco_has_data }}" id="discoParams">
+        <div class="card card-body bg-light mb-3">
+          {{ render_field(form.cut_direction) }}
+          <div class="row">
+            <div class="col-md-6">{{ render_field(form.z1_height) }}</div>
+            <div class="col-md-6">{{ render_field(form.z2_height) }}</div>
+          </div>
+          {{ render_field(form.kerf_width) }}
+        </div>
+      </div>
+
+      {# ---- 备注 ---- #}
+      {{ render_field(form.notes) }}
+
+      <div class="d-flex gap-2 mt-4">
+        {{ form.submit(class='btn btn-primary') }}
+        <a href="{{ url_for('recipe.detail_recipe', id=recipe.id) if is_edit else url_for('recipe.list_recipes') }}"
+           class="btn btn-outline-secondary">
+          {{ _('取消') }}
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

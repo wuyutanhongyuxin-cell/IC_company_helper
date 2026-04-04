@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('配方详情') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+
+    {# ---- 标题 + 操作按钮 ---- #}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4>
+        <i class="bi bi-journal-text"></i> {{ recipe.wafer_material }} / {{ recipe.wafer_size }}
+        <span class="badge {{ 'bg-primary' if recipe.is_active else 'bg-secondary' }}">
+          v{{ recipe.version }}
+        </span>
+      </h4>
+      <div class="btn-group btn-group-sm">
+        {% if current_user.is_admin and recipe.is_active %}
+        <a href="{{ url_for('recipe.edit_recipe', id=recipe.id) }}"
+           class="btn btn-outline-warning">
+          <i class="bi bi-pencil"></i> {{ _('编辑') }}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('recipe.recipe_history', gid=recipe.recipe_group_id) }}"
+           class="btn btn-outline-secondary">
+          <i class="bi bi-clock-history"></i> {{ _('版本历史') }}
+        </a>
+      </div>
+    </div>
+
+    {# 非最新版本提示 #}
+    {% if not recipe.is_active %}
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle"></i>
+      {{ _('这是历史版本，不可编辑。') }}
+    </div>
+    {% endif %}
+
+    {# ---- 基础参数 ---- #}
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="bi bi-gear"></i> {{ _('基础参数') }}
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><th style="width:40%">{{ _('材料类型') }}</th><td>{{ recipe.wafer_material }}</td></tr>
+          <tr><th>{{ _('晶圆尺寸') }}</th><td>{{ recipe.wafer_size }}</td></tr>
+          <tr><th>{{ _('厚度') }}</th><td>{{ recipe.thickness }} um</td></tr>
+          <tr><th>{{ _('刀片型号') }}</th><td>{{ recipe.blade_model }}</td></tr>
+          <tr><th>{{ _('主轴转速') }}</th><td>{{ recipe.spindle_speed }} RPM</td></tr>
+          <tr><th>{{ _('进给速度') }}</th><td>{{ recipe.feed_rate }} mm/s</td></tr>
+          <tr><th>{{ _('切割深度') }}</th><td>{{ recipe.cut_depth }} um</td></tr>
+          <tr><th>{{ _('冷却水流量') }}</th><td>{{ recipe.coolant_flow }} L/min</td></tr>
+          <tr><th>{{ _('最大允许崩边') }}</th><td>{{ recipe.max_chipping }} um</td></tr>
+        </table>
+      </div>
+    </div>
+
+    {# ---- DISCO 参数（有值时才显示）---- #}
+    {% if recipe.cut_direction or recipe.z1_height or recipe.z2_height or recipe.kerf_width %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="bi bi-cpu"></i> {{ _('DISCO 切割机参数') }}
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          {% if recipe.cut_direction %}
+          <tr><th style="width:40%">{{ _('切割方向') }}</th><td>{{ recipe.cut_direction }}</td></tr>
+          {% endif %}
+          {% if recipe.z1_height is not none %}
+          <tr><th>{{ _('Z1 高度') }}</th><td>{{ recipe.z1_height }} um</td></tr>
+          {% endif %}
+          {% if recipe.z2_height is not none %}
+          <tr><th>{{ _('Z2 高度') }}</th><td>{{ recipe.z2_height }} um</td></tr>
+          {% endif %}
+          {% if recipe.kerf_width is not none %}
+          <tr><th>{{ _('切口宽度') }}</th><td>{{ recipe.kerf_width }} um</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---- 备注 ---- #}
+    {% if recipe.notes %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="bi bi-chat-text"></i> {{ _('备注') }}
+      </div>
+      <div class="card-body">{{ recipe.notes }}</div>
+    </div>
+    {% endif %}
+
+    {# ---- 元信息 ---- #}
+    <div class="text-muted small">
+      {{ _('创建者') }}: {{ recipe.creator.display_name if recipe.creator else '-' }}
+      &nbsp;|&nbsp;
+      {{ _('创建时间') }}: {{ recipe.created_at.strftime('%Y-%m-%d %H:%M') }}
+    </div>
+
+    <div class="mt-3">
+      <a href="{{ url_for('recipe.list_recipes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> {{ _('返回列表') }}
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

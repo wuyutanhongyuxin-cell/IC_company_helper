@@ -13,7 +13,7 @@
 | 1.5 | 迁移修复 + DISCO 参数 | **已完成** | — | 2026-04-04 |
 | 2 | 数据模型 | **已完成** (随 Step 1 交付) | ~215 | 2026-04-04 |
 | 3 | 认证蓝图 | **已完成** | ~766 | 2026-04-04 |
-| 4 | 参数库蓝图 | 未开始 | ~385 | — |
+| 4 | 参数库蓝图 | **已完成** | ~620 | 2026-04-04 |
 | 5 | 工单蓝图 + 状态机 | 未开始 | ~595 | — |
 | 6 | 仪表盘 | 未开始 | ~130 | — |
 | 7 | PDF 报告 | 未开始 | ~185 | — |
@@ -21,7 +21,7 @@
 | 9 | 部署脚本 | 未开始 | ~115 | — |
 | 10 | 集成测试与打磨 | 未开始 | — | — |
 
-**当前进度: Step 1-3 已完成并推送，下一步 Step 4 参数库蓝图。**
+**当前进度: Step 1-4 已完成并推送，下一步 Step 5 工单蓝图 + 状态机。**
 
 ---
 
@@ -120,47 +120,36 @@
 - [x] 审计日志正确记录 10 条操作
 - [x] 已推送到 GitHub (`13dacad`)
 
+### Step 4: 参数库蓝图 (2026-04-04)
+
+**交付物 (6 文件, 620 行):**
+- `app/forms/recipe.py` — RecipeForm + DISCO 参数 + _str_or_empty coerce (80 行)
+- `app/blueprints/recipe/routes.py` — 5 路由 + 版本化逻辑 + try/except (197 行)
+- `app/templates/recipe/list.html` — 列表 + 材料/尺寸筛选 + aria-label (103 行)
+- `app/templates/recipe/form.html` — 表单 + DISCO 可折叠 (85 行)
+- `app/templates/recipe/detail.html` — 详情 + DISCO 区块条件显示 (108 行)
+- `app/templates/recipe/history.html` — 版本历史 (57 行)
+
+**审查修复 (Sonnet + Codex → Opus 拍板, 8 项):**
+- try/except 包裹 create/edit commit — 防止并发竞态导致 500
+- joinedload(Recipe.creator) — 消除 list/history 的 N+1 查询
+- DISCO 折叠判断改用 `is not none` — 修复 0.0 值被折叠的 bug
+- 取消按钮: 编辑时跳回详情页
+- aria-label 筛选下拉框
+- _RECIPE_FIELDS 同步警告注释
+
+**验证结果:**
+- [x] 创建配方 → 编辑产生新版本 (v1→v2)
+- [x] 旧版本只读, is_active=False, 编辑被拒绝
+- [x] 版本历史正确显示同组所有版本
+- [x] 材料 + 尺寸筛选功能正常
+- [x] DISCO 参数可选填写, 无值时隐藏区块
+- [x] Operator 无法创建/编辑 (403)
+- [x] 审计日志记录创建和编辑变更详情
+
 ---
 
 ## 待实施步骤详细规划
-
-### Step 4: 参数库蓝图 (~385 LOC) — 下一步
-
-**交付文件:**
-
-| 文件 | 内容 | 预估行数 |
-|------|------|----------|
-| `app/forms/recipe.py` | RecipeForm (含 DISCO 参数字段) | ~70 |
-| `app/blueprints/recipe/routes.py` | 列表/创建/详情/编辑/版本历史 5 个路由 | ~160 |
-| `app/templates/recipe/list.html` | 参数列表 + 材料/尺寸筛选 | ~55 |
-| `app/templates/recipe/form.html` | 创建/编辑表单 (DISCO 参数可折叠) | ~60 |
-| `app/templates/recipe/detail.html` | 参数详情 + 版本信息 | ~40 |
-
-**路由清单:**
-
-| 方法 | 路由 | 说明 | 权限 |
-|------|------|------|------|
-| GET | `/recipes/` | 列表 (每组最新版) + 筛选 | 已登录 |
-| GET/POST | `/recipes/create` | 新建配方 | Admin |
-| GET | `/recipes/<id>` | 查看具体版本 | 已登录 |
-| GET/POST | `/recipes/<id>/edit` | 编辑 → 创建新版本 | Admin |
-| GET | `/recipes/group/<gid>/history` | 版本历史 | 已登录 |
-
-**关键逻辑:**
-- 编辑 = 复制所有字段到新行 (version+1)，旧行 `is_active=False`
-- 列表只显示每组最新版本 (`is_active=True`)
-- Admin 可创建/编辑，Operator 只读
-- `recipe_group_id` 首次创建时取 `MAX(recipe_group_id) + 1`
-
-**验证标准:**
-- [ ] 创建配方 → 编辑产生新版本 (version+1)
-- [ ] 旧版本只读，is_active=False
-- [ ] 版本历史正确显示同组所有版本
-- [ ] 材料 + 尺寸筛选功能正常
-- [ ] DISCO 参数可选填写
-- [ ] Operator 无法创建/编辑
-
----
 
 ### Step 5: 工单蓝图 + 状态机 (~595 LOC)
 

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination %}
+
+{% block title %}{{ _('参数库') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4><i class="bi bi-journal-text"></i> {{ _('参数库') }}</h4>
+  {% if current_user.is_admin %}
+  <a href="{{ url_for('recipe.create_recipe') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> {{ _('新建配方') }}
+  </a>
+  {% endif %}
+</div>
+
+{# ====== 筛选栏 ====== #}
+<form method="GET" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="material" class="form-select form-select-sm" aria-label="{{ _('材料筛选') }}">
+      <option value="">{{ _('全部材料') }}</option>
+      {% for m in materials %}
+      <option value="{{ m }}" {{ 'selected' if m == current_material }}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="size" class="form-select form-select-sm" aria-label="{{ _('尺寸筛选') }}">
+      <option value="">{{ _('全部尺寸') }}</option>
+      {% for s in sizes %}
+      <option value="{{ s }}" {{ 'selected' if s == current_size }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-funnel"></i> {{ _('筛选') }}
+    </button>
+    {% if current_material or current_size %}
+    <a href="{{ url_for('recipe.list_recipes') }}" class="btn btn-sm btn-outline-secondary">
+      {{ _('清除') }}
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+{# ====== 配方表格 ====== #}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>{{ _('材料') }}</th>
+        <th>{{ _('尺寸') }}</th>
+        <th>{{ _('刀片型号') }}</th>
+        <th>{{ _('版本') }}</th>
+        <th>{{ _('创建者') }}</th>
+        <th>{{ _('创建时间') }}</th>
+        <th>{{ _('操作') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for recipe in pagination.items %}
+      <tr>
+        <td>{{ recipe.wafer_material }}</td>
+        <td>{{ recipe.wafer_size }}</td>
+        <td>{{ recipe.blade_model }}</td>
+        <td><span class="badge bg-primary">v{{ recipe.version }}</span></td>
+        <td>{{ recipe.creator.display_name if recipe.creator else '-' }}</td>
+        <td>{{ recipe.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <a href="{{ url_for('recipe.detail_recipe', id=recipe.id) }}"
+               class="btn btn-outline-primary" title="{{ _('详情') }}">
+              <i class="bi bi-eye"></i>
+            </a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('recipe.edit_recipe', id=recipe.id) }}"
+               class="btn btn-outline-warning" title="{{ _('编辑') }}">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+            <a href="{{ url_for('recipe.recipe_history', gid=recipe.recipe_group_id) }}"
+               class="btn btn-outline-secondary" title="{{ _('版本历史') }}">
+              <i class="bi bi-clock-history"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">
+          {{ _('暂无配方数据') }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{{ render_pagination(pagination, 'recipe.list_recipes',
+     material=current_material, size=current_size) }}
+{% endblock %}
