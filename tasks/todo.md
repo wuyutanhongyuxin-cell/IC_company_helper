@@ -12,7 +12,7 @@
 | 1 | 项目骨架 + 配置 | **已完成** | ~625 | 2026-04-04 |
 | 1.5 | 迁移修复 + DISCO 参数 | **已完成** | — | 2026-04-04 |
 | 2 | 数据模型 | **已完成** (随 Step 1 交付) | ~215 | 2026-04-04 |
-| 3 | 认证蓝图 | 未开始 | ~510 | — |
+| 3 | 认证蓝图 | **已完成** | ~766 | 2026-04-04 |
 | 4 | 参数库蓝图 | 未开始 | ~385 | — |
 | 5 | 工单蓝图 + 状态机 | 未开始 | ~595 | — |
 | 6 | 仪表盘 | 未开始 | ~130 | — |
@@ -21,7 +21,7 @@
 | 9 | 部署脚本 | 未开始 | ~115 | — |
 | 10 | 集成测试与打磨 | 未开始 | — | — |
 
-**当前进度: Step 1-2 已完成并推送，下一步 Step 3 认证蓝图。**
+**当前进度: Step 1-3 已完成并推送，下一步 Step 4 参数库蓝图。**
 
 ---
 
@@ -29,6 +29,7 @@
 
 | 提交 | 说明 |
 |------|------|
+| `13dacad` | feat: Step 3 — 认证蓝图 (登录/登出/用户管理/改密码) |
 | `e11eaa8` | fix: 迁移脚本与模型对齐 + Recipe 增加 DISCO 参数 |
 | `6f471a3` | docs: add bilingual README |
 | `ea0fbf4` | fix: round 2 review (Sonnet + Codex 审查修复) |
@@ -91,51 +92,39 @@
 - [x] CheckConstraint 拒绝非法 cut_direction
 - [x] 已推送到 GitHub
 
+### Step 3: 认证蓝图 (2026-04-04)
+
+**交付物 (15 文件, 766 行):**
+- `app/utils/decorators.py` — @role_required 装饰器 (30 行)
+- `app/forms/auth.py` — 4 个表单 + ROLE_CHOICES 常量 (97 行)
+- `app/blueprints/auth/routes.py` — 6 个路由 + 审计日志 (162 行)
+- `app/templates/base.html` — Bootstrap 5 布局 + 导航栏 (127 行)
+- `app/templates/_macros.html` — render_field + render_pagination (60 行)
+- `app/templates/auth/` — 4 个模板 (login/users/user_form/change_password)
+- `app/static/css/style.css` — 平板触控优化 44px (73 行)
+- `app/static/js/app.js` — 确认对话框 + CSRF AJAX 注入 (44 行)
+- 4 个占位路由添加 @login_required
+
+**审查修复 (3 轮 Agent 并行审查):**
+- ROLE_CHOICES 常量提取，消除两处硬编码
+- CSRF meta tag 添加到 base.html head
+- 确认 role_required 已含 is_authenticated 检查
+
+**验证结果:**
+- [x] 登录 admin/changeme 成功跳转仪表盘
+- [x] Admin 创建/编辑/禁用 operator 用户
+- [x] Operator 访问用户管理页返回 403
+- [x] 改密码功能正常 (旧密码验证 + 新密码生效)
+- [x] 禁用用户无法登录
+- [x] 登出后重定向到登录页
+- [x] 审计日志正确记录 10 条操作
+- [x] 已推送到 GitHub (`13dacad`)
+
 ---
 
 ## 待实施步骤详细规划
 
-### Step 3: 认证蓝图 (~510 LOC) — 下一步
-
-**交付文件:**
-
-| 文件 | 内容 | 预估行数 |
-|------|------|----------|
-| `app/utils/decorators.py` | `@role_required('admin')` 装饰器 | ~25 |
-| `app/forms/auth.py` | LoginForm / UserCreateForm / UserEditForm / ChangePasswordForm | ~80 |
-| `app/blueprints/auth/routes.py` | 登录/登出/用户CRUD/改密码 6 个路由 | ~150 |
-| `app/templates/base.html` | Bootstrap 5 基础布局 + 导航栏 + Flash 消息 | ~100 |
-| `app/templates/_macros.html` | 表单渲染宏 + 分页宏 | ~50 |
-| `app/templates/auth/login.html` | 登录页 | ~30 |
-| `app/templates/auth/users.html` | 用户列表页 | ~30 |
-| `app/templates/auth/user_form.html` | 创建/编辑用户表单 | ~25 |
-| `app/templates/auth/change_password.html` | 改密码页 | ~20 |
-| `app/static/css/style.css` | 自定义样式 + 平板触控优化 (44px) | ~60 |
-| `app/static/js/app.js` | 确认对话框 + CSRF token 注入 | ~30 |
-
-**路由清单:**
-
-| 方法 | 路由 | 说明 | 权限 |
-|------|------|------|------|
-| GET/POST | `/auth/login` | 登录 | 公开 |
-| GET | `/auth/logout` | 登出 | 已登录 |
-| GET | `/auth/users` | 用户列表 | Admin |
-| GET/POST | `/auth/users/create` | 创建用户 | Admin |
-| GET/POST | `/auth/users/<id>/edit` | 编辑用户 | Admin |
-| GET/POST | `/auth/change-password` | 修改密码 | 已登录 |
-
-**验证标准:**
-- [ ] 登录 admin/changeme 成功跳转仪表盘
-- [ ] Admin 创建/编辑/禁用 operator 用户
-- [ ] Operator 访问用户管理页返回 403
-- [ ] 改密码功能正常
-- [ ] 登出后重定向到登录页
-- [ ] 所有用户可见字符串用 `_()` 包裹
-- [ ] 按钮/链接触控目标 >= 44px
-
----
-
-### Step 4: 参数库蓝图 (~385 LOC)
+### Step 4: 参数库蓝图 (~385 LOC) — 下一步
 
 **交付文件:**
 
