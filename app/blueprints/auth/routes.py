@@ -2,6 +2,8 @@
 认证路由 — 登录/登出/用户管理/修改密码
 Admin 可管理用户，所有用户可改自己密码
 """
+from urllib.parse import urlparse
+
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_babel import gettext as _
@@ -37,12 +39,17 @@ def login():
             return render_template('auth/login.html', form=form)
 
         login_user(user)
-        log_action(user.id, 'login', 'user', user.id)
-        db.session.commit()
+        # 审计日志: commit 失败不应阻止登录
+        try:
+            log_action(user.id, 'login', 'user', user.id)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('登录审计日志写入失败')
 
-        # 安全校验: 只允许站内相对路径跳转
+        # 安全校验: 拒绝协议相对 URL (//evil.com) 和绝对 URL
         next_page = request.args.get('next', '')
-        if not next_page or not next_page.startswith('/'):
+        if not next_page or urlparse(next_page).netloc:
             next_page = url_for('main.dashboard')
 
         flash(_('登录成功'), 'success')
@@ -51,19 +58,22 @@ def login():
     return render_template('auth/login.html', form=form)
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    """登出 — 记录审计日志后清除会话"""
-    log_action(current_user.id, 'logout', 'user', current_user.id)
-    db.session.commit()
+    """登出 — POST 防止 CSRF 强制登出，记录审计日志后清除会话"""
+    try:
+        log_action(current_user.id, 'logout', 'user', current_user.id)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('登出审计日志写入失败')
     logout_user()
     flash(_('已登出'), 'info')
     return redirect(url_for('auth.login'))
 
 
 @auth_bp.route('/users')
-@login_required
 @role_required('admin')
 def users():
     """用户列表 — 仅 Admin 可访问"""
@@ -77,7 +87,6 @@ def users():
 
 
 @auth_bp.route('/users/create', methods=['GET', 'POST'])
-@login_required
 @role_required('admin')
 def user_create():
     """创建用户 — 仅 Admin"""
@@ -90,8 +99,9 @@ def user_create():
         )
         user.set_password(form.password.data)
         db.session.add(user)
+        db.session.flush()  # 刷入数据库获取 user.id，但不提交事务
         log_action(
-            current_user.id, 'create', 'user',
+            current_user.id, 'create', 'user', user.id,
             details={'username': user.username, 'role': user.role},
         )
         db.session.commit()
@@ -102,7 +112,6 @@ def user_create():
 
 
 @auth_bp.route('/users/<int:id>/edit', methods=['GET', 'POST'])
-@login_required
 @role_required('admin')
 def user_edit(id):
     """编辑用户 — 仅 Admin，可修改角色/状态/重置密码"""
@@ -110,6 +119,17 @@ def user_edit(id):
     form = UserEditForm(obj=user)
 
     if form.validate_on_submit():
+        # 防止 admin 禁用/降级自己 — 避免系统无管理员
+        if user.id == current_user.id:
+            if not form.is_active.data:
+                flash(_('不能禁用自己的账号'), 'danger')
+                return render_template(
+                    'auth/user_form.html', form=form, user=user, is_edit=True)
+            if form.role.data != 'admin':
+                flash(_('不能降低自己的权限'), 'danger')
+                return render_template(
+                    'auth/user_form.html', form=form, user=user, is_edit=True)
+
         # 记录变更详情
         changes = _collect_user_changes(user, form)
         # 应用变更

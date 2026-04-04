@@ -35,3 +35,28 @@
 - SQLite batch mode 迁移执行 DROP TABLE + RENAME TABLE
 - 如果 `PRAGMA foreign_keys=ON`，DROP 时会触发 FK 约束冲突
 - **解决**: 在 `run_migrations_online()` 中迁移前 `PRAGMA foreign_keys=OFF`，迁移后恢复 `ON`
+
+## Open Redirect 防护
+- `startswith('/')` 不够！`//evil.com` 是协议相对 URL，浏览器会跳转到 `https://evil.com`
+- **正确做法**: `urlparse(next_page).netloc` 检查，拒绝有 netloc 的 URL
+- Flask-Login 自身也用类似检查
+
+## 登出必须用 POST
+- GET 登出容易被 CSRF 攻击: `<img src="/auth/logout">` 可静默登出任何用户
+- **解决**: `@auth_bp.route('/logout', methods=['POST'])` + CSRF hidden field
+- OWASP 建议: 任何状态变更操作都应使用 POST
+
+## Admin 自我保护
+- 管理员编辑自己时，必须阻止禁用/降级操作
+- 否则系统可能失去最后一个 admin，进入死锁
+- 在 `user_edit` POST 处理中加 `user.id == current_user.id` 守卫
+
+## 审计日志 target_id
+- `db.session.add(user)` 后 `user.id` 是 None（未 commit）
+- 需要 `db.session.flush()` 先刷入数据库获取 id，再调用 `log_action()`
+- `flush()` 不提交事务，user 和 audit_log 仍在同一事务中
+
+## curl -L -X POST 的陷阱
+- `curl -L -X POST` 在 follow 302 重定向时**仍然用 POST**
+- 这会导致对 GET-only 的目标路由返回 405
+- 测试时不要用 `-L -X POST` 组合，分步手动跟随重定向

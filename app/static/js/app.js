@@ -29,14 +29,20 @@
     return '';
   }
 
-  // 拦截 fetch 请求，自动加 CSRF header
+  // 拦截 fetch 请求，自动加 CSRF header（兼容 Headers 对象和普通对象）
   var originalFetch = window.fetch;
   window.fetch = function (url, options) {
     options = options || {};
     if (options.method && options.method.toUpperCase() !== 'GET') {
-      options.headers = options.headers || {};
-      if (!options.headers['X-CSRFToken']) {
-        options.headers['X-CSRFToken'] = getCsrfToken();
+      if (options.headers instanceof Headers) {
+        if (!options.headers.has('X-CSRFToken')) {
+          options.headers.set('X-CSRFToken', getCsrfToken());
+        }
+      } else {
+        options.headers = options.headers || {};
+        if (!options.headers['X-CSRFToken']) {
+          options.headers['X-CSRFToken'] = getCsrfToken();
+        }
       }
     }
     return originalFetch.call(this, url, options);

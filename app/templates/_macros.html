@@ -5,7 +5,7 @@
   {# BooleanField 用 form-check 布局 #}
   {% if field.type == 'BooleanField' %}
   <div class="form-check">
-    {{ field(class='form-check-input', **kwargs) }}
+    {{ field(class='form-check-input' ~ (' is-invalid' if field.errors else ''), **kwargs) }}
     {{ field.label(class='form-check-label') }}
   </div>
   {% else %}

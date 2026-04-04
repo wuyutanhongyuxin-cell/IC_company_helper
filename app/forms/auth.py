@@ -75,6 +75,11 @@ class UserEditForm(FlaskForm):
     )
     submit = SubmitField(_l('保存'))
 
+    def validate_new_password(self, field):
+        """填写了新密码时，至少 6 位"""
+        if field.data and len(field.data) < 6:
+            raise ValidationError(_l('新密码至少需要 6 位'))
+
 
 class ChangePasswordForm(FlaskForm):
     """修改密码表单（本人使用）"""
