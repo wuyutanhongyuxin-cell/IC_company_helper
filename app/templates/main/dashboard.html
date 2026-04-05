@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('仪表盘') }} — WaferCut MES{% endblock %}
+
+{% block content %}
+{# ====== 标题 ====== #}
+<h4 class="mb-3"><i class="bi bi-speedometer2"></i> {{ _('仪表盘') }}</h4>
+
+{# ====== 统计卡片 ====== #}
+<div class="row g-3 mb-4">
+  {# 在制工单 #}
+  <div class="col-6 col-md-3">
+    <div class="card text-bg-primary h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fs-2 fw-bold">{{ in_progress }}</div>
+            <div class="small">{{ _('在制工单') }}</div>
+          </div>
+          <i class="bi bi-gear-wide-connected fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 今日完成 #}
+  <div class="col-6 col-md-3">
+    <div class="card text-bg-success h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fs-2 fw-bold">{{ today_completed }}</div>
+            <div class="small">{{ _('今日完成') }}</div>
+          </div>
+          <i class="bi bi-check-circle fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 异常挂起 #}
+  <div class="col-6 col-md-3">
+    <div class="card text-bg-danger h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fs-2 fw-bold">{{ exception_count }}</div>
+            <div class="small">{{ _('异常挂起') }}</div>
+          </div>
+          <i class="bi bi-exclamation-triangle fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 总工单数 #}
+  <div class="col-6 col-md-3">
+    <div class="card text-bg-secondary h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fs-2 fw-bold">{{ total }}</div>
+            <div class="small">{{ _('总工单数') }}</div>
+          </div>
+          <i class="bi bi-clipboard-data fs-1 opacity-25"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ====== 快捷操作 ====== #}
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a href="{{ url_for('work_order.create_order') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> {{ _('创建工单') }}
+  </a>
+  <a href="{{ url_for('recipe.list_recipes') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-journal-text"></i> {{ _('查看参数库') }}
+  </a>
+  <a href="{{ url_for('work_order.list_orders') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-list-ul"></i> {{ _('全部工单') }}
+  </a>
+</div>
+
+{# ====== 最近工单 ====== #}
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-clock-history"></i> {{ _('最近工单') }}
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>{{ _('工单号') }}</th>
+            <th>{{ _('客户') }}</th>
+            <th>{{ _('状态') }}</th>
+            <th>{{ _('数量') }}</th>
+            <th>{{ _('操作员') }}</th>
+            <th>{{ _('创建时间') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in recent_orders %}
+          <tr>
+            <td>
+              <a href="{{ url_for('work_order.detail_order', id=order.id) }}">
+                {{ order.order_number }}
+              </a>
+            </td>
+            <td>{{ order.customer }}</td>
+            <td>
+              <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
+                {{ status_labels.get(order.status, order.status) }}
+              </span>
+            </td>
+            <td>{{ order.quantity }} {{ _('片') }}</td>
+            <td>{{ order.operator.display_name if order.operator else '-' }}</td>
+            <td>{{ order.created_at.strftime('%m-%d %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+              {{ _('暂无工单数据') }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
