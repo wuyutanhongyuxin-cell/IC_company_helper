@@ -1,7 +1,7 @@
 """
-工具函数 — 工单号生成等
+工具函数 — 工单号生成、日期计算等
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import current_app
 from sqlalchemy import func
@@ -34,3 +34,16 @@ def generate_order_number():
             seq = 1
 
     return f'{prefix}{seq:04d}'
+
+
+def get_today_start_utc_naive():
+    """
+    获取本地今日 00:00 对应的 UTC naive datetime。
+
+    completed_at 等字段以 UTC(naive) 存储在 SQLite 中，
+    用此函数生成的时间戳做 >= 比较，可正确筛选"本地今天"的记录。
+    """
+    utc_now = datetime.now(timezone.utc)
+    local_now = utc_now.astimezone()                                    # 系统本地时区
+    midnight = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight.astimezone(timezone.utc).replace(tzinfo=None)

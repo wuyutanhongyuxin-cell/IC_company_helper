@@ -58,3 +58,12 @@
 </nav>
 {% endif %}
 {% endmacro %}
+
+
+{# ====== 状态标签宏 ====== #}
+
+{% macro render_status_badge(status, status_colors, status_labels) %}
+<span class="badge bg-{{ status_colors.get(status, 'secondary') }}">
+  {{ status_labels.get(status, status) }}
+</span>
+{% endmacro %}

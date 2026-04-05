@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import render_pagination %}
+{% from "_macros.html" import render_pagination, render_status_badge %}
 
 {% block title %}{{ _('工单管理') }} — WaferCut MES{% endblock %}
 
@@ -62,9 +62,7 @@
         <td>{{ order.wafer_spec }}</td>
         <td>{{ order.quantity }}</td>
         <td>
-          <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
-            {{ status_labels.get(order.status, order.status) }}
-          </span>
+          {{ render_status_badge(order.status, status_colors, status_labels) }}
         </td>
         <td>{{ order.operator.display_name if order.operator else '-' }}</td>
         <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>

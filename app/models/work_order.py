@@ -21,8 +21,8 @@ class WorkOrder(db.Model):
     # 绑定到具体版本的配方（通过 PK，不是 group_id）
     recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
 
-    # 状态
-    status = db.Column(db.String(32), nullable=False, default='incoming')
+    # 状态（仪表盘按 status 做 4 次 COUNT，索引避免全表扫描）
+    status = db.Column(db.String(32), nullable=False, default='incoming', index=True)
     previous_status = db.Column(db.String(32), nullable=True)   # 异常挂起时保存
 
     # 操作员（可后续分配，ondelete=SET NULL 保留工单数据）

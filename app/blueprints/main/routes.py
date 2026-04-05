@@ -1,5 +1,4 @@
 """主页路由 — 仪表盘 + 语言切换"""
-from datetime import datetime, time, timezone
 from urllib.parse import urlparse
 
 from flask import redirect, url_for, session, current_app, request, render_template
@@ -11,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from app.blueprints.main import main_bp
 from app.extensions import db
 from app.models.work_order import WorkOrder
+from app.utils.helpers import get_today_start_utc_naive
 from app.utils.state_machine import STATUS_LABELS, STATUS_COLORS
 
 
@@ -34,13 +34,8 @@ def dashboard():
         .filter(WorkOrder.status == 'exception_hold')
     ).scalar() or 0
 
-    # 今日完成: completed_at 以 UTC(naive) 存储，
-    # 将本地今日 00:00 转为 UTC(naive) 进行比较
-    _utc = datetime.now(timezone.utc)
-    _local = _utc.astimezone()                           # 系统本地时区
-    _midnight = _local.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_start = _midnight.astimezone(timezone.utc).replace(tzinfo=None)
-
+    # 今日完成: completed_at 以 UTC(naive) 存储
+    today_start = get_today_start_utc_naive()
     today_completed = db.session.execute(
         db.select(func.count(WorkOrder.id))
         .filter(
