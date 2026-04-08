@@ -72,8 +72,23 @@
     </div>
     {% endif %}
 
-    {# ---- 操作按钮 ---- #}
-    {% if order.status != 'completed' %}
+    {# ---- 已完成: PDF 报告按钮 ---- #}
+    {% if order.status == 'completed' %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-file-earmark-pdf"></i> {{ _('交付报告') }}</div>
+      <div class="card-body d-flex flex-wrap gap-2">
+        <a href="{{ url_for('report.delivery_report', order_id=order.id) }}"
+           class="btn btn-primary">
+          <i class="bi bi-download"></i> {{ _('下载 PDF') }}
+        </a>
+        <a href="{{ url_for('report.delivery_report_preview', order_id=order.id) }}"
+           class="btn btn-outline-secondary" target="_blank">
+          <i class="bi bi-eye"></i> {{ _('预览') }}
+        </a>
+      </div>
+    </div>
+    {% else %}
+    {# ---- 未完成: 操作按钮 ---- #}
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-lightning"></i> {{ _('操作') }}</div>
       <div class="card-body d-flex flex-wrap gap-2">
@@ -124,7 +139,7 @@
 
       </div>
     </div>
-    {% endif %}
+    {% endif %}{# end if completed/else #}
 
     {# ---- 状态时间线 ---- #}
     {% if order.status_logs %}

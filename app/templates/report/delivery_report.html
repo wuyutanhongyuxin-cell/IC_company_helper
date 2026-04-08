@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language', 'zh') if session is defined else 'zh' }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ _('交付报告') }} — {{ order.order_number }}</title>
+  <style>
+    /* ====== A4 页面设置 ====== */
+    @page {
+      size: A4;
+      margin: 20mm 15mm 25mm 15mm;
+    }
+    @page :first {
+      margin-top: 15mm;
+    }
+
+    /* ====== 字体: 用 font-family 让 Pango/fontconfig 自动发现系统字体 ====== */
+    /* Ubuntu 生产环境: apt install fonts-noto-cjk                         */
+    /* Windows 开发环境: Microsoft YaHei 作为 fallback                     */
+    body {
+      font-family: 'Noto Sans CJK SC', 'Source Han Sans SC',
+                   'Microsoft YaHei', 'SimSun', sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ====== 报告头部 ====== */
+    .report-header {
+      text-align: center;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .report-header h1 {
+      font-size: 18pt;
+      margin: 0 0 4px 0;
+      letter-spacing: 2px;
+    }
+    .report-header .subtitle {
+      font-size: 11pt;
+      color: #666;
+      margin: 0;
+    }
+    .report-header .report-number {
+      font-size: 9pt;
+      color: #999;
+      margin-top: 6px;
+    }
+
+    /* ====== 通用表格 ====== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      text-align: left;
+      font-size: 9.5pt;
+    }
+    th {
+      background: #f5f5f5;
+      font-weight: 600;
+      width: 35%;
+    }
+
+    /* ====== 章节标题 ====== */
+    .section-title {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 20px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #ddd;
+      color: #222;
+    }
+
+    /* ====== 检验结果标签 ====== */
+    .result-pass {
+      color: #198754;
+      font-weight: 700;
+      border: 1px solid #198754;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .result-fail {
+      color: #dc3545;
+      font-weight: 700;
+      border: 1px solid #dc3545;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    /* ====== 签名区域 ====== */
+    .signature-section {
+      margin-top: 40px;
+      page-break-inside: avoid;
+    }
+    .signature-table th, .signature-table td {
+      border: none;
+      padding: 8px 0;
+      vertical-align: bottom;
+    }
+    .signature-table .sig-line {
+      border-bottom: 1px solid #333;
+      min-width: 120px;
+      display: inline-block;
+      margin: 0 8px;
+      width: 140px;
+    }
+
+    /* ====== 页脚 ====== */
+    .report-footer {
+      margin-top: 30px;
+      padding-top: 8px;
+      border-top: 1px solid #ccc;
+      font-size: 8pt;
+      color: #999;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  {# ====== 报告头部 ====== #}
+  <div class="report-header">
+    <h1>{{ _('晶圆切割交付报告') }}</h1>
+    <p class="subtitle">Wafer Dicing Delivery Report</p>
+    <p class="report-number">{{ _('报告编号') }}: {{ order.order_number }}</p>
+  </div>
+
+  {# ====== 1. 工单基本信息 ====== #}
+  <div class="section-title">{{ _('一、工单信息') }}</div>
+  <table>
+    <tr>
+      <th>{{ _('工单号') }}</th>
+      <td>{{ order.order_number }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('客户') }}</th>
+      <td>{{ order.customer }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('晶圆规格') }}</th>
+      <td>{{ order.wafer_spec }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('数量') }}</th>
+      <td>{{ order.quantity }} {{ _('片') }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('操作员') }}</th>
+      <td>{{ order.operator.display_name if order.operator else '-' }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('创建时间') }}</th>
+      <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('完成时间') }}</th>
+      <td>{{ order.completed_at.strftime('%Y-%m-%d %H:%M') if order.completed_at else '-' }}</td>
+    </tr>
+  </table>
+
+  {# ====== 2. 切割参数 ====== #}
+  {% if order.recipe %}
+  <div class="section-title">{{ _('二、切割参数') }}</div>
+  <table>
+    <tr>
+      <th>{{ _('材料类型') }}</th>
+      <td>{{ order.recipe.wafer_material }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('晶圆尺寸') }}</th>
+      <td>{{ order.recipe.wafer_size }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('厚度') }}</th>
+      <td>{{ order.recipe.thickness }} um</td>
+    </tr>
+    <tr>
+      <th>{{ _('刀片型号') }}</th>
+      <td>{{ order.recipe.blade_model }}</td>
+    </tr>
+    <tr>
+      <th>{{ _('主轴转速') }}</th>
+      <td>{{ order.recipe.spindle_speed }} RPM</td>
+    </tr>
+    <tr>
+      <th>{{ _('进给速度') }}</th>
+      <td>{{ order.recipe.feed_rate }} mm/s</td>
+    </tr>
+    <tr>
+      <th>{{ _('切割深度') }}</th>
+      <td>{{ order.recipe.cut_depth }} um</td>
+    </tr>
+    <tr>
+      <th>{{ _('冷却水流量') }}</th>
+      <td>{{ order.recipe.coolant_flow }} L/min</td>
+    </tr>
+    <tr>
+      <th>{{ _('最大允许崩边') }}</th>
+      <td>{{ order.recipe.max_chipping }} um</td>
+    </tr>
+    {# DISCO 切割机参数（有值时显示） #}
+    {% if order.recipe.cut_direction %}
+    <tr>
+      <th>{{ _('切割方向') }}</th>
+      <td>{{ order.recipe.cut_direction }}</td>
+    </tr>
+    {% endif %}
+    {% if order.recipe.z1_height is not none %}
+    <tr>
+      <th>{{ _('Z1 高度') }}</th>
+      <td>{{ order.recipe.z1_height }} um</td>
+    </tr>
+    {% endif %}
+    {% if order.recipe.z2_height is not none %}
+    <tr>
+      <th>{{ _('Z2 高度') }}</th>
+      <td>{{ order.recipe.z2_height }} um</td>
+    </tr>
+    {% endif %}
+    {% if order.recipe.kerf_width is not none %}
+    <tr>
+      <th>{{ _('切口宽度') }}</th>
+      <td>{{ order.recipe.kerf_width }} um</td>
+    </tr>
+    {% endif %}
+  </table>
+  <p style="font-size: 8pt; color: #999;">
+    {{ _('配方版本') }}: v{{ order.recipe.version }}
+    (Group #{{ order.recipe.recipe_group_id }})
+  </p>
+  {% endif %}
+
+  {# ====== 3. 检验结果 ====== #}
+  {% if order.inspection_result %}
+  <div class="section-title">{{ _('三、检验结果') }}</div>
+  <table>
+    <tr>
+      <th>{{ _('良率') }}</th>
+      <td>{{ order.yield_rate }}%</td>
+    </tr>
+    <tr>
+      <th>{{ _('崩边实测') }}</th>
+      <td>{{ order.max_chipping_actual }} um</td>
+    </tr>
+    <tr>
+      <th>{{ _('检验结论') }}</th>
+      <td>
+        {% if order.inspection_result == 'pass' %}
+          <span class="result-pass">{{ _('通过') }} / PASS</span>
+        {% else %}
+          <span class="result-fail">{{ _('不通过') }} / FAIL</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% if order.inspection_notes %}
+    <tr>
+      <th>{{ _('检验备注') }}</th>
+      <td>{{ order.inspection_notes }}</td>
+    </tr>
+    {% endif %}
+  </table>
+  {% endif %}
+
+  {# ====== 4. 状态流转时间线 ====== #}
+  {% if order.status_logs %}
+  <div class="section-title">{{ _('四、状态流转') }}</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:25%">{{ _('时间') }}</th>
+        <th style="width:35%">{{ _('状态变更') }}</th>
+        <th style="width:20%">{{ _('操作员') }}</th>
+        <th style="width:20%">{{ _('备注') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in order.status_logs %}
+      <tr>
+        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ status_labels.get(log.from_status, log.from_status) }} → {{ status_labels.get(log.to_status, log.to_status) }}</td>
+        <td>{{ log.operator.display_name if log.operator else '-' }}</td>
+        <td>{{ log.notes or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {# ====== 5. 签名区域 ====== #}
+  <div class="signature-section">
+    <div class="section-title">{{ _('五、签名确认') }}</div>
+    <table class="signature-table">
+      <tr>
+        <td>{{ _('操作员') }}:
+          <span class="sig-line"></span>
+        </td>
+        <td>{{ _('日期') }}:
+          <span class="sig-line"></span>
+        </td>
+      </tr>
+      <tr>
+        <td>{{ _('品质确认') }}:
+          <span class="sig-line"></span>
+        </td>
+        <td>{{ _('日期') }}:
+          <span class="sig-line"></span>
+        </td>
+      </tr>
+      <tr>
+        <td>{{ _('客户签收') }}:
+          <span class="sig-line"></span>
+        </td>
+        <td>{{ _('日期') }}:
+          <span class="sig-line"></span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  {# ====== 页脚 ====== #}
+  <div class="report-footer">
+    <p>WaferCut MES &mdash; {{ _('本报告由系统自动生成') }}</p>
+  </div>
+
+</body>
+</html>
