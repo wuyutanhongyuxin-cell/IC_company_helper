@@ -72,6 +72,18 @@ E:/claude_ask/company_helper_/
 │   └── translations/            # i18n 翻译文件
 │       ├── en/LC_MESSAGES/      # 英文
 │       └── ja/LC_MESSAGES/      # 日文
+├── tests/                       # 集成测试 (141 用例)
+│   ├── conftest.py              # 共享 fixtures
+│   ├── helpers.py               # 测试辅助函数
+│   ├── test_smoke.py            # 冒烟测试
+│   ├── test_auth.py             # 认证测试
+│   ├── test_recipe.py           # 配方测试
+│   ├── test_work_order.py       # 工单测试
+│   ├── test_exception.py        # 异常挂起测试
+│   ├── test_report.py           # 报告测试
+│   ├── test_permissions.py      # 权限测试
+│   ├── test_i18n.py             # 国际化测试
+│   └── test_audit.py            # 审计日志测试
 ├── migrations/                  # Flask-Migrate 自动生成
 ├── instance/
 │   └── wafercut.db              # SQLite 数据库
@@ -81,19 +93,19 @@ E:/claude_ask/company_helper_/
 ```
 
 ### 当前阶段
-**研究规划已完成，待开始实现。** 详见 `docs/architecture-and-research.md`。
+**全部 10 步已完成。** 详见 `tasks/todo.md`。
 
 10 步构建计划：
-1. ☐ 项目骨架 + 配置 (~220 LOC)
-2. ☐ 数据模型 (~215 LOC)
-3. ☐ 认证蓝图 (~510 LOC)
-4. ☐ 参数库蓝图 (~385 LOC)
-5. ☐ 工单蓝图 + 状态机 (~595 LOC)
-6. ☐ 仪表盘 (~130 LOC)
-7. ☐ PDF 报告 (~185 LOC)
-8. ☐ 国际化 (~300 LOC)
-9. ☐ 部署脚本 (~115 LOC)
-10. ☐ 集成测试与打磨
+1. ☑ 项目骨架 + 配置
+2. ☑ 数据模型
+3. ☑ 认证蓝图
+4. ☑ 参数库蓝图
+5. ☑ 工单蓝图 + 状态机
+6. ☑ 仪表盘
+7. ☑ PDF 报告
+8. ☑ 国际化
+9. ☑ 部署脚本
+10. ☑ 集成测试与打磨 (141 测试用例)
 
 进度跟踪: `tasks/todo.md`
 
