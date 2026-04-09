@@ -29,8 +29,7 @@ instance/
 .DS_Store
 Thumbs.db
 
-# Babel compiled
-*.mo
+# Babel compiled (保留 translations/ 下的 .mo 文件)
 
 # Logs
 *.log
