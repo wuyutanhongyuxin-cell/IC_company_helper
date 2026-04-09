@@ -1,6 +1,6 @@
 # WaferCut MES — 任务进度跟踪
 
-> 最后更新: 2026-04-05
+> 最后更新: 2026-04-09
 > GitHub: https://github.com/wuyutanhongyuxin-cell/IC_company_helper
 
 ---
@@ -16,12 +16,12 @@
 | 4 | 参数库蓝图 | **已完成** | ~620 | 2026-04-04 |
 | 5 | 工单蓝图 + 状态机 | **已完成** | ~815 | 2026-04-05 |
 | 6 | 仪表盘 | **已完成** | ~217 | 2026-04-05 |
-| 7 | PDF 报告 | 未开始 | ~185 | — |
-| 8 | 国际化 | 未开始 | ~300 | — |
-| 9 | 部署脚本 | 未开始 | ~115 | — |
+| 7 | PDF 报告 | **已完成** | ~185 | 2026-04-05 |
+| 8 | 国际化 | **已完成** | ~300 | 2026-04-05 |
+| 9 | 部署脚本 | **已完成** | ~312 | 2026-04-09 |
 | 10 | 集成测试与打磨 | 未开始 | — | — |
 
-**当前进度: Step 1-6 已完成并推送，下一步 Step 7 PDF 报告。**
+**当前进度: Step 1-9 已完成并推送，下一步 Step 10 集成测试与打磨。**
 
 ---
 
@@ -264,30 +264,31 @@ pybabel compile -d app/translations
 
 ---
 
-### Step 9: 部署脚本 (~115 LOC)
+### Step 9: 部署脚本 (2026-04-09)
 
-**交付文件:**
+**交付物 (3 文件, 312 行):**
+- `deploy.sh` — Ubuntu 一键部署 + `--update` 更新模式 (247 行)
+- `backup.sh` — SQLite WAL 安全备份 + gzip + 7天轮转 (45 行)
+- `.env.example` — 环境变量模板 (20 行)
 
-| 文件 | 内容 | 预估行数 |
-|------|------|----------|
-| `deploy.sh` | Ubuntu 一键部署 (Gunicorn + Nginx + systemd) | ~80 |
-| `backup.sh` | SQLite 每日备份 + 保留 7 天 | ~35 |
+**deploy.sh 功能:**
+1. 首次部署: 系统依赖 → 用户创建 → 代码同步 → .env 生成 → 数据库初始化 → systemd → nginx → cron 备份
+2. `--update` 更新: 系统依赖 → 代码同步 → 数据库迁移 → 重启服务
 
-**deploy.sh 流程:**
-1. 安装系统依赖 (Python, Nginx, fonts-noto-cjk)
-2. 创建 venv + 安装 pip 依赖
-3. 配置 .env (SECRET_KEY, ADMIN_PASSWORD)
-4. flask db upgrade + flask init-db
-5. 配置 Gunicorn systemd 服务 (2 workers)
-6. 配置 Nginx 反向代理
-7. 启用服务 + 防火墙
+**审查修复 (Agent 审查, 6 项):**
+- 排除 `.flaskenv` 防止生产环境 `FLASK_DEBUG=1`
+- `.env.example` 添加 `FLASK_APP=wsgi.py` + `FLASK_DEBUG=0`
+- `init_database()` 显式 export `FLASK_APP`/`FLASK_CONFIG`，`sudo -E` 传递环境变量
+- 删除 `setup_backup()` 中自我复制的 no-op `cp` 命令
+- `backup.sh` 添加 ERR trap 记录失败日志
+- systemd `EnvironmentFile` 格式约束写入 `.env.example` 注释
 
-**验证标准:**
-- [ ] Ubuntu VM 执行一键部署成功
-- [ ] systemd 服务正常运行
-- [ ] Nginx 反代 + HTTPS (可选)
-- [ ] 备份脚本 cron 定时执行
-- [ ] 进程崩溃自恢复 (Restart=always)
+**安全特性:**
+- SECRET_KEY 自动生成 64 字符随机 hex
+- .env 文件 chmod 600 仅 owner 可读
+- systemd 安全加固: ProtectSystem/PrivateTmp/NoNewPrivileges/ProtectHome
+- Nginx 安全头: X-Content-Type-Options/X-Frame-Options/X-XSS-Protection
+- 隐藏文件 (dotfiles) 禁止 HTTP 访问
 
 ---
 
