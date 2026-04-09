@@ -49,6 +49,9 @@
 Flask Application Factory 模式
 ├── config.py                  # 开发/生产/测试 配置
 ├── wsgi.py                    # WSGI 入口
+├── deploy.sh                  # Ubuntu 一键部署（首次 / --update 更新）
+├── backup.sh                  # SQLite WAL 安全备份 + 7天轮转
+├── .env.example               # 环境变量模板
 ├── app/
 │   ├── __init__.py            # create_app() 工厂函数
 │   ├── extensions.py          # 两步式扩展初始化
@@ -57,15 +60,22 @@ Flask Application Factory 模式
 │   │   ├── recipe.py          # 版本化配方（单表设计）
 │   │   ├── work_order.py      # 工单 + 状态日志
 │   │   └── audit_log.py       # 审计日志 + log_action() 辅助函数
+│   ├── forms/                 # WTForms 表单验证
+│   │   ├── auth.py            # 登录 / 用户管理 / 改密码
+│   │   ├── recipe.py          # 配方参数 + DISCO 参数
+│   │   └── work_order.py      # 工单 / 检验 / 状态表单
 │   ├── blueprints/            # 5 个 Flask 蓝图
 │   │   ├── auth/              # 登录 / 登出 / 用户管理
 │   │   ├── main/              # 仪表盘 + 语言切换
 │   │   ├── recipe/            # 配方 CRUD + 版本历史
-│   │   ├── work_order/        # 工单 CRUD + 状态机
-│   │   └── report/            # PDF 生成
-│   ├── utils/                 # 装饰器、状态机、工具函数
+│   │   ├── work_order/        # 工单 CRUD + 状态流转 + 检验
+│   │   └── report/            # PDF 交付报告
+│   ├── utils/                 # 工具函数
+│   │   ├── decorators.py      # @role_required 权限装饰器
+│   │   ├── state_machine.py   # 状态枚举 + 转换验证
+│   │   └── helpers.py         # 工单号生成 + API 响应
 │   ├── templates/             # Jinja2 模板（Bootstrap 5）
-│   ├── static/                # CSS + JS
+│   ├── static/                # CSS + JS（平板触控优化）
 │   └── translations/          # 国际化翻译（en, ja）
 └── migrations/                # Alembic 迁移脚本
 ```
@@ -140,7 +150,8 @@ source venv/bin/activate          # Linux/Mac
 # 安装依赖
 pip install -r requirements.txt
 
-# 初始化数据库
+# 初始化数据库（迁移 + 创建默认管理员）
+flask db upgrade
 flask init-db
 ```
 
@@ -150,7 +161,7 @@ flask init-db
 # 开发模式
 flask run
 
-# 生产模式
+# 生产模式（推荐使用 deploy.sh 一键部署）
 export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 export FLASK_CONFIG=config.ProductionConfig
 gunicorn -w 2 "wsgi:app"
@@ -174,7 +185,7 @@ gunicorn -w 2 "wsgi:app"
 - **目标环境**：工厂车间局域网单服务器部署
 - **WAL 模式**：支持并发读 + 单写（2 个 Gunicorn worker 足够）
 - **PRAGMA 配置**：`journal_mode=WAL`、`foreign_keys=ON`、`busy_timeout=5000`
-- **备份**：cron 定时任务简单复制文件
+- **备份**：`sqlite3 .backup` API 安全备份（WAL 模式兼容）+ gzip 压缩 + 7天轮转
 
 ### 为什么用单表配方版本化？
 
@@ -205,14 +216,14 @@ gunicorn -w 2 "wsgi:app"
 | 阶段 | 状态 | 说明 |
 |------|------|------|
 | 1. 骨架 + 配置 | 已完成 | 应用工厂、扩展、模型、配置 |
-| 2. 数据模型 | 计划中 | 完整模型实现 + 迁移 |
-| 3. 认证蓝图 | 计划中 | 登录/登出、用户管理、密码修改 |
-| 4. 配方蓝图 | 计划中 | CRUD + 版本历史 + 筛选 |
-| 5. 工单 + 状态机 | 计划中 | CRUD + 状态流转 + 检验 |
-| 6. 仪表盘 | 计划中 | 统计卡片 + 最近工单 |
-| 7. PDF 报告 | 计划中 | WeasyPrint 交付报告（CJK） |
-| 8. 国际化 | 计划中 | 英文 + 日文翻译 |
-| 9. 部署 | 计划中 | Ubuntu + Gunicorn + Nginx + systemd |
+| 2. 数据模型 | 已完成 | 5 张表 + Flask-Migrate 迁移 |
+| 3. 认证蓝图 | 已完成 | 登录/登出、用户管理、密码修改 |
+| 4. 配方蓝图 | 已完成 | CRUD + 版本历史 + 材料/尺寸筛选 |
+| 5. 工单 + 状态机 | 已完成 | CRUD + 6 阶段状态流转 + 异常挂起 |
+| 6. 仪表盘 | 已完成 | 统计卡片 + 最近工单 |
+| 7. PDF 报告 | 已完成 | WeasyPrint A4 交付报告（CJK） |
+| 8. 国际化 | 已完成 | 中/英/日三语全量翻译 |
+| 9. 部署 | 已完成 | deploy.sh 一键部署 + backup.sh 自动备份 |
 | 10. 测试 | 计划中 | 集成测试 + 打磨 |
 
 ---
@@ -251,20 +262,37 @@ flask db downgrade           # 回滚
 
 ## 部署（Ubuntu 24.04）
 
+### 一键部署
+
 ```bash
-# 系统依赖
-sudo apt install -y python3-venv fonts-noto-cjk libpango-1.0-0
+# 首次部署（自动完成：系统依赖 → 用户创建 → venv → .env → 数据库 → systemd → Nginx → cron 备份）
+sudo bash deploy.sh
 
-# 应用配置
-sudo useradd -r -s /bin/false wafercut
-sudo mkdir -p /opt/wafercut
-# ...（deploy.sh 可自动完成）
+# 代码更新（仅同步代码 + 迁移 + 重启服务）
+sudo bash deploy.sh --update
+```
 
-# Gunicorn（2 workers 适配 SQLite）
-gunicorn -w 2 --bind unix:/run/wafercut/wafercut.sock "wsgi:app"
+### deploy.sh 自动配置
 
-# Nginx 反向代理 + systemd 服务
-# 详见 deploy.sh
+| 组件 | 配置 |
+|------|------|
+| Gunicorn | 2 workers + Unix socket + `--preload` |
+| Nginx | 反向代理 + 静态文件缓存 30天 + 安全头 |
+| systemd | `Restart=on-failure` + 安全加固（ProtectSystem/PrivateTmp/NoNewPrivileges） |
+| 备份 | 每日 02:00 自动执行 `backup.sh`，SQLite `.backup` API + gzip + 保留 7天 |
+| 安全 | SECRET_KEY 自动生成、.env 权限 600、dotfiles 禁止 HTTP 访问 |
+
+### 环境变量
+
+复制 `.env.example` 为 `.env` 并修改（deploy.sh 首次运行时自动完成）：
+
+```bash
+FLASK_APP=wsgi.py
+FLASK_DEBUG=0
+FLASK_CONFIG=config.ProductionConfig
+SECRET_KEY=<自动生成>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=changeme    # 部署后立即修改！
 ```
 
 ---
@@ -328,6 +356,9 @@ A production-grade MES (Manufacturing Execution System) designed for wafer dicin
 Flask Application Factory Pattern
 ├── config.py                  # Dev/Prod/Test configurations
 ├── wsgi.py                    # WSGI entry point
+├── deploy.sh                  # Ubuntu one-click deploy (initial / --update)
+├── backup.sh                  # SQLite WAL-safe backup + 7-day rotation
+├── .env.example               # Environment variable template
 ├── app/
 │   ├── __init__.py            # create_app() factory
 │   ├── extensions.py          # Two-step extension initialization
@@ -336,15 +367,22 @@ Flask Application Factory Pattern
 │   │   ├── recipe.py          # Versioned recipe (single-table design)
 │   │   ├── work_order.py      # Work order + status log
 │   │   └── audit_log.py       # Audit trail + log_action() helper
+│   ├── forms/                 # WTForms validation
+│   │   ├── auth.py            # Login / user management / password change
+│   │   ├── recipe.py          # Recipe params + DISCO params
+│   │   └── work_order.py      # Work order / inspection / status forms
 │   ├── blueprints/            # 5 Flask Blueprints
 │   │   ├── auth/              # Login / Logout / User CRUD
 │   │   ├── main/              # Dashboard + Language switch
 │   │   ├── recipe/            # Recipe CRUD + version history
-│   │   ├── work_order/        # Work order CRUD + state machine
-│   │   └── report/            # PDF generation
-│   ├── utils/                 # Decorators, state machine, helpers
+│   │   ├── work_order/        # Work order CRUD + status transitions + inspection
+│   │   └── report/            # PDF delivery report
+│   ├── utils/                 # Utility functions
+│   │   ├── decorators.py      # @role_required permission decorator
+│   │   ├── state_machine.py   # Status enum + transition validation
+│   │   └── helpers.py         # Work order number generation + API response
 │   ├── templates/             # Jinja2 templates (Bootstrap 5)
-│   ├── static/                # CSS + JS
+│   ├── static/                # CSS + JS (tablet touch-optimized)
 │   └── translations/          # i18n (en, ja)
 └── migrations/                # Alembic migration scripts
 ```
@@ -419,7 +457,8 @@ source venv/bin/activate          # Linux/Mac
 # Install dependencies
 pip install -r requirements.txt
 
-# Initialize database
+# Initialize database (migrate + create default admin)
+flask db upgrade
 flask init-db
 ```
 
@@ -429,7 +468,7 @@ flask init-db
 # Development
 flask run
 
-# Production
+# Production (recommended: use deploy.sh for one-click deploy)
 export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 export FLASK_CONFIG=config.ProductionConfig
 gunicorn -w 2 "wsgi:app"
@@ -453,7 +492,7 @@ gunicorn -w 2 "wsgi:app"
 - **Target environment**: Single-server LAN deployment (factory floor)
 - **WAL mode**: Enables concurrent reads + single writer (sufficient for 2 Gunicorn workers)
 - **PRAGMA configuration**: `journal_mode=WAL`, `foreign_keys=ON`, `busy_timeout=5000`
-- **Backup**: Simple file copy via cron job
+- **Backup**: `sqlite3 .backup` API (WAL-safe) + gzip compression + 7-day rotation
 
 ### Why Single-Table Recipe Versioning?
 
@@ -484,14 +523,14 @@ gunicorn -w 2 "wsgi:app"
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1. Skeleton + Config | Done | Application factory, extensions, models, config |
-| 2. Data Models | Planned | Full model implementation + migrations |
-| 3. Auth Blueprint | Planned | Login/logout, user CRUD, password change |
-| 4. Recipe Blueprint | Planned | CRUD + version history + filtering |
-| 5. Work Order + State Machine | Planned | CRUD + status transitions + inspection |
-| 6. Dashboard | Planned | Statistics cards + recent orders |
-| 7. PDF Reports | Planned | WeasyPrint delivery reports (CJK) |
-| 8. i18n | Planned | English + Japanese translations |
-| 9. Deployment | Planned | Ubuntu + Gunicorn + Nginx + systemd |
+| 2. Data Models | Done | 5 tables + Flask-Migrate migrations |
+| 3. Auth Blueprint | Done | Login/logout, user CRUD, password change |
+| 4. Recipe Blueprint | Done | CRUD + version history + material/size filtering |
+| 5. Work Order + State Machine | Done | CRUD + 6-stage status transitions + exception hold |
+| 6. Dashboard | Done | Statistics cards + recent orders |
+| 7. PDF Reports | Done | WeasyPrint A4 delivery reports (CJK) |
+| 8. i18n | Done | Chinese/English/Japanese full translations |
+| 9. Deployment | Done | deploy.sh one-click deploy + backup.sh auto backup |
 | 10. Testing | Planned | Integration tests + polish |
 
 ---
@@ -530,20 +569,37 @@ flask db downgrade                   # Rollback
 
 ## Deployment (Ubuntu 24.04)
 
+### One-Click Deploy
+
 ```bash
-# System dependencies
-sudo apt install -y python3-venv fonts-noto-cjk libpango-1.0-0
+# First-time deploy (auto: system deps → user → venv → .env → database → systemd → Nginx → cron backup)
+sudo bash deploy.sh
 
-# Application setup
-sudo useradd -r -s /bin/false wafercut
-sudo mkdir -p /opt/wafercut
-# ... (deploy.sh automates this)
+# Code update (sync code + migrate + restart only)
+sudo bash deploy.sh --update
+```
 
-# Gunicorn (2 workers for SQLite compatibility)
-gunicorn -w 2 --bind unix:/run/wafercut/wafercut.sock "wsgi:app"
+### What deploy.sh Configures
 
-# Nginx reverse proxy + systemd service
-# See deploy.sh for full automation
+| Component | Configuration |
+|-----------|---------------|
+| Gunicorn | 2 workers + Unix socket + `--preload` |
+| Nginx | Reverse proxy + 30-day static cache + security headers |
+| systemd | `Restart=on-failure` + hardening (ProtectSystem/PrivateTmp/NoNewPrivileges) |
+| Backup | Daily 02:00 via `backup.sh`, SQLite `.backup` API + gzip + 7-day retention |
+| Security | Auto-generated SECRET_KEY, .env chmod 600, dotfiles blocked via HTTP |
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and edit (deploy.sh does this automatically on first run):
+
+```bash
+FLASK_APP=wsgi.py
+FLASK_DEBUG=0
+FLASK_CONFIG=config.ProductionConfig
+SECRET_KEY=<auto-generated>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=changeme    # Change immediately after deploy!
 ```
 
 ---
