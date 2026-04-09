@@ -77,6 +77,18 @@ Flask Application Factory 模式
 │   ├── templates/             # Jinja2 模板（Bootstrap 5）
 │   ├── static/                # CSS + JS（平板触控优化）
 │   └── translations/          # 国际化翻译（en, ja）
+├── tests/                     # 集成测试（141 用例）
+│   ├── conftest.py            # 共享 fixtures（app, db, users）
+│   ├── helpers.py             # 测试辅助函数
+│   ├── test_smoke.py          # 冒烟测试
+│   ├── test_auth.py           # 认证测试
+│   ├── test_recipe.py         # 配方测试
+│   ├── test_work_order.py     # 工单测试
+│   ├── test_exception.py      # 异常挂起测试
+│   ├── test_report.py         # 报告测试
+│   ├── test_permissions.py    # 权限测试
+│   ├── test_i18n.py           # 国际化测试
+│   └── test_audit.py          # 审计日志测试
 └── migrations/                # Alembic 迁移脚本
 ```
 
@@ -224,7 +236,7 @@ gunicorn -w 2 "wsgi:app"
 | 7. PDF 报告 | 已完成 | WeasyPrint A4 交付报告（CJK） |
 | 8. 国际化 | 已完成 | 中/英/日三语全量翻译 |
 | 9. 部署 | 已完成 | deploy.sh 一键部署 + backup.sh 自动备份 |
-| 10. 测试 | 计划中 | 集成测试 + 打磨 |
+| 10. 测试 | 已完成 | 141 个 pytest 集成测试，覆盖全部功能模块 |
 
 ---
 
@@ -384,6 +396,18 @@ Flask Application Factory Pattern
 │   ├── templates/             # Jinja2 templates (Bootstrap 5)
 │   ├── static/                # CSS + JS (tablet touch-optimized)
 │   └── translations/          # i18n (en, ja)
+├── tests/                     # Integration tests (141 cases)
+│   ├── conftest.py            # Shared fixtures (app, db, users)
+│   ├── helpers.py             # Test utility functions
+│   ├── test_smoke.py          # Smoke tests
+│   ├── test_auth.py           # Authentication tests
+│   ├── test_recipe.py         # Recipe tests
+│   ├── test_work_order.py     # Work order tests
+│   ├── test_exception.py      # Exception hold tests
+│   ├── test_report.py         # Report tests
+│   ├── test_permissions.py    # Permission tests
+│   ├── test_i18n.py           # i18n tests
+│   └── test_audit.py          # Audit log tests
 └── migrations/                # Alembic migration scripts
 ```
 
@@ -531,7 +555,7 @@ gunicorn -w 2 "wsgi:app"
 | 7. PDF Reports | Done | WeasyPrint A4 delivery reports (CJK) |
 | 8. i18n | Done | Chinese/English/Japanese full translations |
 | 9. Deployment | Done | deploy.sh one-click deploy + backup.sh auto backup |
-| 10. Testing | Planned | Integration tests + polish |
+| 10. Testing | Done | 141 pytest integration tests covering all modules |
 
 ---
 
